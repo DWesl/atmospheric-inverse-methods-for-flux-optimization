@@ -2900,5 +2900,128 @@ class TestRemapper(unittest2.TestCase):
              [43, 46, 48]])
 
 
+class TestObsOpAligners(unittest2.TestCase):
+    """Test the alignment fucntions.
+
+    Ideally checks both that it runs and that it gives correct answer.
+
+    Depends on unreleased xarray changes.
+    """
+
+    def test_align_full(self):
+        """Test aligning the full influence function.
+
+        The input is the influence function straignt from the file.
+        """
+        import xarray
+        import pandas as pd
+        import inversion.observation_operator
+        N_OBS_TIMES = 20
+        N_SITES = 5
+        FORECAST_LENGTH = 10
+        NY = 5
+        NX = 5
+
+        ds = xarray.Dataset(
+            dict(influence_function=(
+                ("observation_time",
+                 "site",
+                 "time_before_observation",
+                 "dim_y",
+                 "dim_x"),
+                np.ones((N_OBS_TIMES, N_SITES,
+                         FORECAST_LENGTH, NY, NX)))
+            ),
+            dict(
+                observation_time=pd.date_range(
+                    "2010-01-01", periods=N_OBS_TIMES, freq="1H"),
+                site=range(N_SITES),
+                time_before_observation=pd.timedelta_range(
+                    0, periods=FORECAST_LENGTH, freq="6H"),
+                projection_y_coordinate=np.linspace(0, 2100, NY),
+                projection_x_coordinate=np.linspace(0, 2100, NX),
+            ),
+        )
+        flux_time = (
+            np.floor(
+                (ds.coords["observation_time"] -
+                 ds.coords["time_before_observation"] -
+                 np.array("2010-01-01", dtype="M8[ns]")) /
+                np.array(6, dtype="m8[h]").astype("m8[ns]")) *
+            np.array(6, dtype="m8[h]").astype("m8[ns]") +
+            np.array("2010-01-01", dtype="M8[ns]"))
+        ds.coords["flux_time"] = flux_time
+
+        aligned_ds = (
+            inversion.observation_operator.align_full_obs_op(
+                ds.influence_function))
+
+        aligned_data = aligned_ds.data
+        self.assertIsInstance(aligned_data, scipy.sparse.bsr_matrix)
+        self.assertEqual(aligned_data.blocksize, (N_SITES, NY * NX))
+        np_tst.assert_allclose(aligned_data.data, 1)
+        np_tst.assert_allclose(np.diff(aligned_data.indptr), FORECAST_LENGTH)
+
+    def test_align_partial(self):
+        """Test aligning the full influence function.
+
+        The input is the influence function straignt from the file.
+        """
+        import xarray
+        import pandas as pd
+        import inversion.observation_operator
+        N_OBS_TIMES = 20
+        N_SITES = 5
+        FORECAST_LENGTH = 10
+        NY = 5
+        NX = 5
+
+        ds = xarray.Dataset(
+            dict(influence_function=(
+                ("observation_time",
+                 "site",
+                 "time_before_observation",
+                 "dim_y",
+                 "dim_x"),
+                np.ones((N_OBS_TIMES, N_SITES,
+                         FORECAST_LENGTH, NY, NX)))
+            ),
+            dict(
+                observation_time=pd.date_range(
+                    "2010-01-01", periods=N_OBS_TIMES, freq="1H"),
+                site=range(N_SITES),
+                time_before_observation=pd.timedelta_range(
+                    0, periods=FORECAST_LENGTH, freq="6H"),
+                projection_y_coordinate=np.linspace(0, 2100, NY),
+                projection_x_coordinate=np.linspace(0, 2100, NX),
+            ),
+        )
+        flux_time = (
+            np.floor(
+                (ds.coords["observation_time"] -
+                 ds.coords["time_before_observation"] -
+                 np.array("2010-01-01", dtype="M8[ns]")) /
+                np.array(6, dtype="m8[h]").astype("m8[ns]")) *
+            np.array(6, dtype="m8[h]").astype("m8[ns]") +
+            np.array("2010-01-01", dtype="M8[ns]"))
+        ds.coords["flux_time"] = flux_time
+
+        aligned_ds = (
+            inversion.observation_operator.align_partial_obs_op(
+                ds.influence_function.isel_points(
+                    dim="observation",
+                    site=range(N_SITES),
+                    observation_time=range(0, 3 * N_SITES, 3),
+                ).set_index(observation=["observation_time", "site"])
+            )
+        )
+
+        aligned_data = aligned_ds.data
+        self.assertIsInstance(aligned_data, scipy.sparse.bsr_matrix)
+        self.assertEqual(aligned_data.blocksize, (N_SITES, NY * NX))
+        np_tst.assert_allclose(aligned_data.data, 1)
+        np_tst.assert_allclose(np.diff(aligned_data.indptr), FORECAST_LENGTH)
+
+
 if __name__ == "__main__":
     unittest2.main()
