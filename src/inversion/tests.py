@@ -2908,6 +2908,8 @@ class TestObsOpAligners(unittest2.TestCase):
     Depends on unreleased xarray changes.
     """
 
+    # xarray only supports ndarrays and dask arrays
+    @unittest2.expectedFailure
     def test_align_full(self):
         """Test aligning the full influence function.
 
@@ -2962,6 +2964,8 @@ class TestObsOpAligners(unittest2.TestCase):
         np_tst.assert_allclose(aligned_data.data, 1)
         np_tst.assert_allclose(np.diff(aligned_data.indptr), FORECAST_LENGTH)
 
+    # xarray doesn't support calling stack on a stacked dimension
+    @unittest2.expectedFailure
     def test_align_partial(self):
         """Test aligning the full influence function.
 
