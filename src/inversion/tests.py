@@ -2908,8 +2908,6 @@ class TestObsOpAligners(unittest2.TestCase):
     Depends on unreleased xarray changes.
     """
 
-    # xarray only supports ndarrays and dask arrays
-    @unittest2.expectedFailure
     def test_align_full(self):
         """Test aligning the full influence function.
 
@@ -2954,18 +2952,15 @@ class TestObsOpAligners(unittest2.TestCase):
             np.array("2010-01-01", dtype="M8[ns]"))
         ds.coords["flux_time"] = flux_time
 
-        aligned_ds = (
+        aligned_data = (
             inversion.observation_operator.align_full_obs_op(
                 ds.influence_function))
 
-        aligned_data = aligned_ds.data
         self.assertIsInstance(aligned_data, scipy.sparse.bsr_matrix)
         self.assertEqual(aligned_data.blocksize, (N_SITES, NY * NX))
         np_tst.assert_allclose(aligned_data.data, 1)
         np_tst.assert_allclose(np.diff(aligned_data.indptr), FORECAST_LENGTH)
 
-    # xarray doesn't support calling stack on a stacked dimension
-    @unittest2.expectedFailure
     def test_align_partial(self):
         """Test aligning the full influence function.
 
@@ -3010,7 +3005,7 @@ class TestObsOpAligners(unittest2.TestCase):
             np.array("2010-01-01", dtype="M8[ns]"))
         ds.coords["flux_time"] = flux_time
 
-        aligned_ds = (
+        aligned_data = (
             inversion.observation_operator.align_partial_obs_op(
                 ds.influence_function.isel_points(
                     dim="observation",
@@ -3020,9 +3015,8 @@ class TestObsOpAligners(unittest2.TestCase):
             )
         )
 
-        aligned_data = aligned_ds.data
         self.assertIsInstance(aligned_data, scipy.sparse.bsr_matrix)
-        self.assertEqual(aligned_data.blocksize, (N_SITES, NY * NX))
+        self.assertEqual(aligned_data.blocksize, (1, NY * NX))
         np_tst.assert_allclose(aligned_data.data, 1)
         np_tst.assert_allclose(np.diff(aligned_data.indptr), FORECAST_LENGTH)
 

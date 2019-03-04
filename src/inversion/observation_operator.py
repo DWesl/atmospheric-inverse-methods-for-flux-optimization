@@ -8,6 +8,12 @@ Functions here turn these into BSR matrices dimensioned
 `observation_time, site, time, y, x`
 keeping the memory savings of the first form while still usable for
 standard code.
+
+I should mention at some point that "influence function" and
+"observation operator" refer to the same quantity, represented by
+:math:`H` in the equations.  This is used to represent which fluxes
+influence each observation, as well as what observations would be
+expected given a specific set of fluxes.
 """
 import numpy as np
 from numpy import newaxis
@@ -88,40 +94,40 @@ def align_full_obs_op(obs_op):
     # cols: flux_time, space stack
     aligned_data.ndim = 2
 
-    aligned_ds = xarray.DataArray(
-        aligned_data,
-        coords=dict(
-            observation=(
-                xarray.core.utils.multiindex_from_product_levels(
-                    [obs_op.indexes["observation_time"],
-                     obs_op.indexes["site"]],
-                    names=["forecast_reference_time", "site"]
-                )
-            ),
-            flux_state_space=(
-                xarray.core.utils.multiindex_from_product_levels(
-                    [flux_time_index,
-                     y_index,
-                     x_index],
-                    names=["time", "dim_y", "dim_x"]
-                )
-            ),
-        ),
-        dims=("observation", "flux_state_space"),
-        name=obs_op.name,
-        attrs=obs_op.attrs,
-        encoding=obs_op.encoding,
-    )
+    # aligned_ds = xarray.DataArray(
+    #     aligned_data,
+    #     coords=dict(
+    #         observation=(
+    #             xarray.core.utils.multiindex_from_product_levels(
+    #                 [obs_op.indexes["observation_time"],
+    #                  obs_op.indexes["site"]],
+    #                 names=["forecast_reference_time", "site"]
+    #             )
+    #         ),
+    #         flux_state_space=(
+    #             xarray.core.utils.multiindex_from_product_levels(
+    #                 [flux_time_index,
+    #                  y_index,
+    #                  x_index],
+    #                 names=["time", "dim_y", "dim_x"]
+    #             )
+    #         ),
+    #     ),
+    #     dims=("observation", "flux_state_space"),
+    #     name=obs_op.name,
+    #     attrs=obs_op.attrs,
+    #     encoding=obs_op.encoding,
+    # )
 
-    for coord_name in obs_op.coords:
-        # I already have some coords
-        # Coords for dimensions don't carry over
-        # I've already taken care of time dims
-        if (((coord_name not in aligned_ds.coords and
-              coord_name not in obs_op.indexes) and
-             "time" not in coord_name)):
-            aligned_ds.coords[coord_name] = obs_op.coords[coord_name]
-    return aligned_ds
+    # for coord_name in obs_op.coords:
+    #     # I already have some coords
+    #     # Coords for dimensions don't carry over
+    #     # I've already taken care of time dims
+    #     if (((coord_name not in aligned_ds.coords and
+    #           coord_name not in obs_op.indexes) and
+    #          "time" not in coord_name)):
+    #         aligned_ds.coords[coord_name] = obs_op.coords[coord_name]
+    return aligned_data
 
 
 def align_partial_obs_op(obs_op):
@@ -178,44 +184,48 @@ def align_partial_obs_op(obs_op):
     data = obs_op.transpose(
         "observation", "time_before_observation",
         "space"
-    ).stack(
-        block_dim=("observation", "time_before_observation")
     ).expand_dims(
         "block_extra_dim", 1
     ).transpose(
-        "block_dim", "block_extra_dim", "space"
+        "observation", "time_before_observation", "block_extra_dim", "space"
     )
+    # .stack(
+    #     block_dim=("observation", "time_before_observation")
+    # )
+    n_obs = len(obs_op.indexes["observation"])
+    n_times_back = len(obs_op.indexes["time_before_observation"])
+    n_space = len(y_index) * len(x_index)
 
     aligned_data = scipy.sparse.bsr_matrix(
-        (data.data,
+        (data.data.reshape(n_obs * n_times_back, 1, n_space),
          (row_offset_start[:, newaxis] + column_offset[newaxis, :]).flat,
          np.arange(flux_time.shape[0] + 1) * flux_time.shape[1]))
     # rows: obs_time, site stack
     # cols: flux_time, space stack
     aligned_data.ndim = 2
 
-    col_index = xarray.core.utils.multiindex_from_product_levels(
-        (flux_time_index,
-         y_index, x_index),
-        ("flux_time", y_index_name, x_index_name))
+    # col_index = xarray.core.utils.multiindex_from_product_levels(
+    #     (flux_time_index,
+    #      y_index, x_index),
+    #     ("flux_time", y_index_name, x_index_name))
 
-    aligned_ds = xarray.DataArray(
-        aligned_data,
-        dict(
-            observation=obs_op.indexes["observation"],
-            flux_state_space=col_index,
-        ),
-        ("observation", "flux_state_space"),
-        obs_op.name,
-        obs_op.attrs,
-        obs_op.encoding,
-    )
-    for coord_name in obs_op.coords:
-        # I already have some coords
-        # Dim coords don't carry over
-        if ((coord_name not in aligned_ds.coords and
-             coord_name not in obs_op.indexes and
-             "time" not in coord_name)):
-            aligned_ds.coords[coord_name] = obs_op.coords[coord_name]
-    return aligned_ds
+    # aligned_ds = xarray.DataArray(
+    #     aligned_data,
+    #     dict(
+    #         observation=obs_op.indexes["observation"],
+    #         flux_state_space=col_index,
+    #     ),
+    #     ("observation", "flux_state_space"),
+    #     obs_op.name,
+    #     obs_op.attrs,
+    #     obs_op.encoding,
+    # )
+    # for coord_name in obs_op.coords:
+    #     # I already have some coords
+    #     # Dim coords don't carry over
+    #     if ((coord_name not in aligned_ds.coords and
+    #          coord_name not in obs_op.indexes and
+    #          "time" not in coord_name)):
+    #         aligned_ds.coords[coord_name] = obs_op.coords[coord_name]
+    return aligned_data
             
