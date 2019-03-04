@@ -55,14 +55,6 @@ def align_full_obs_op(obs_op):
     column_offset = np.arange(flux_time.shape[1])[::-1]
     dt = abs(flux_time[0, 1] - flux_time[0, 0])
     earliest_flux = flux_time.min()
-    # flux_time_index = pd.date_range(
-    #     earliest_flux.values,
-    #     flux_time.max().values,
-    #     freq="{interval:d}S".format(
-    #         interval=int(
-    #             dt.values / np.timedelta64(1, "s")
-    #         )
-    #     ))
 
     # Find offset of first flux in each row
     row_offset_start = np.asarray(
@@ -70,10 +62,6 @@ def align_full_obs_op(obs_op):
     ).astype(np.int64)
 
     # repeat row_offset_start for sites
-    # y_index = obs_op.get_index("dim_y")
-    # x_index = obs_op.get_index("dim_x")
-
-    # obs_op.stack(observation=("observation_time", "site"))
     obs_op = obs_op.stack(space=("dim_y", "dim_x"))
     data = obs_op.transpose(
         "observation_time", "time_before_observation",
@@ -93,39 +81,6 @@ def align_full_obs_op(obs_op):
     # cols: flux_time, space stack
     aligned_data.ndim = 2
 
-    # aligned_ds = xarray.DataArray(
-    #     aligned_data,
-    #     coords=dict(
-    #         observation=(
-    #             xarray.core.utils.multiindex_from_product_levels(
-    #                 [obs_op.indexes["observation_time"],
-    #                  obs_op.indexes["site"]],
-    #                 names=["forecast_reference_time", "site"]
-    #             )
-    #         ),
-    #         flux_state_space=(
-    #             xarray.core.utils.multiindex_from_product_levels(
-    #                 [flux_time_index,
-    #                  y_index,
-    #                  x_index],
-    #                 names=["time", "dim_y", "dim_x"]
-    #             )
-    #         ),
-    #     ),
-    #     dims=("observation", "flux_state_space"),
-    #     name=obs_op.name,
-    #     attrs=obs_op.attrs,
-    #     encoding=obs_op.encoding,
-    # )
-
-    # for coord_name in obs_op.coords:
-    #     # I already have some coords
-    #     # Coords for dimensions don't carry over
-    #     # I've already taken care of time dims
-    #     if (((coord_name not in aligned_ds.coords and
-    #           coord_name not in obs_op.indexes) and
-    #          "time" not in coord_name)):
-    #         aligned_ds.coords[coord_name] = obs_op.coords[coord_name]
     return aligned_data
 
 
@@ -160,14 +115,6 @@ def align_partial_obs_op(obs_op):
 
     y_index_name = [name for name in obs_op.dims if "y" in name][0]
     x_index_name = y_index_name.replace("y", "x")
-    # flux_time_index = pd.date_range(
-    #     earliest_flux.values,
-    #     flux_time.max().values,
-    #     freq="{interval:d}S".format(
-    #         interval=int(
-    #             dt.values / np.timedelta64(1, "s")
-    #         )
-    #     ))
     x_index = obs_op.get_index(x_index_name)
     y_index = obs_op.get_index(y_index_name)
 
@@ -188,9 +135,6 @@ def align_partial_obs_op(obs_op):
     ).transpose(
         "observation", "time_before_observation", "block_extra_dim", "space"
     )
-    # .stack(
-    #     block_dim=("observation", "time_before_observation")
-    # )
     n_obs = len(obs_op.indexes["observation"])
     n_times_back = len(obs_op.indexes["time_before_observation"])
     n_space = len(y_index) * len(x_index)
@@ -203,28 +147,5 @@ def align_partial_obs_op(obs_op):
     # cols: flux_time, space stack
     aligned_data.ndim = 2
 
-    # col_index = xarray.core.utils.multiindex_from_product_levels(
-    #     (flux_time_index,
-    #      y_index, x_index),
-    #     ("flux_time", y_index_name, x_index_name))
-
-    # aligned_ds = xarray.DataArray(
-    #     aligned_data,
-    #     dict(
-    #         observation=obs_op.indexes["observation"],
-    #         flux_state_space=col_index,
-    #     ),
-    #     ("observation", "flux_state_space"),
-    #     obs_op.name,
-    #     obs_op.attrs,
-    #     obs_op.encoding,
-    # )
-    # for coord_name in obs_op.coords:
-    #     # I already have some coords
-    #     # Dim coords don't carry over
-    #     if ((coord_name not in aligned_ds.coords and
-    #          coord_name not in obs_op.indexes and
-    #          "time" not in coord_name)):
-    #         aligned_ds.coords[coord_name] = obs_op.coords[coord_name]
     return aligned_data
             
