@@ -9,7 +9,7 @@ build/
 
 # Test artifacts
 .tox/
-.coverage
+.coverage*
 *_flymake.py
 .mypy_cache
 
