@@ -19,7 +19,6 @@ import numpy as np
 from numpy import newaxis
 
 import scipy.sparse
-import pandas as pd
 
 import xarray.core.utils
 import xarray.core.variable
@@ -56,14 +55,14 @@ def align_full_obs_op(obs_op):
     column_offset = np.arange(flux_time.shape[1])[::-1]
     dt = abs(flux_time[0, 1] - flux_time[0, 0])
     earliest_flux = flux_time.min()
-    flux_time_index = pd.date_range(
-        earliest_flux.values,
-        flux_time.max().values,
-        freq="{interval:d}S".format(
-            interval=int(
-                dt.values / np.timedelta64(1, "s")
-            )
-        ))
+    # flux_time_index = pd.date_range(
+    #     earliest_flux.values,
+    #     flux_time.max().values,
+    #     freq="{interval:d}S".format(
+    #         interval=int(
+    #             dt.values / np.timedelta64(1, "s")
+    #         )
+    #     ))
 
     # Find offset of first flux in each row
     row_offset_start = np.asarray(
@@ -71,8 +70,8 @@ def align_full_obs_op(obs_op):
     ).astype(np.int64)
 
     # repeat row_offset_start for sites
-    y_index = obs_op.get_index("dim_y")
-    x_index = obs_op.get_index("dim_x")
+    # y_index = obs_op.get_index("dim_y")
+    # x_index = obs_op.get_index("dim_x")
 
     # obs_op.stack(observation=("observation_time", "site"))
     obs_op = obs_op.stack(space=("dim_y", "dim_x"))
@@ -159,16 +158,16 @@ def align_partial_obs_op(obs_op):
     dt = abs(flux_time[0, 1] - flux_time[0, 0])
     earliest_flux = flux_time.min()
 
-    x_index_name = [name for name in obs_op.dims if "x" in name][0]
     y_index_name = [name for name in obs_op.dims if "y" in name][0]
-    flux_time_index = pd.date_range(
-        earliest_flux.values,
-        flux_time.max().values,
-        freq="{interval:d}S".format(
-            interval=int(
-                dt.values / np.timedelta64(1, "s")
-            )
-        ))
+    x_index_name = y_index_name.replace("y", "x")
+    # flux_time_index = pd.date_range(
+    #     earliest_flux.values,
+    #     flux_time.max().values,
+    #     freq="{interval:d}S".format(
+    #         interval=int(
+    #             dt.values / np.timedelta64(1, "s")
+    #         )
+    #     ))
     x_index = obs_op.get_index(x_index_name)
     y_index = obs_op.get_index(y_index_name)
 

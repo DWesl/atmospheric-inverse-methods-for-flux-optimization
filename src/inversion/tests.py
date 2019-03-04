@@ -2930,8 +2930,8 @@ class TestObsOpAligners(unittest2.TestCase):
                  "dim_y",
                  "dim_x"),
                 np.ones((N_OBS_TIMES, N_SITES,
-                         FORECAST_LENGTH, NY, NX)))
-            ),
+                         FORECAST_LENGTH, NY, NX))
+            )),
             dict(
                 observation_time=pd.date_range(
                     "2010-01-01", periods=N_OBS_TIMES, freq="1H"),
@@ -2961,6 +2961,26 @@ class TestObsOpAligners(unittest2.TestCase):
         np_tst.assert_allclose(aligned_data.data, 1)
         np_tst.assert_allclose(np.diff(aligned_data.indptr), FORECAST_LENGTH)
 
+        xarray_aligned_ds = xarray.concat(
+            [
+                here_infl.set_index(
+                    time_before_observation="flux_time"
+                ).rename(
+                    dict(time_before_observation="flux_time")
+                )
+                for here_infl in ds["influence_function"]
+            ],
+            "observation_time"
+        ).fillna(0)
+
+        np_tst.assert_allclose(
+            aligned_data.toarray(),
+            xarray_aligned_ds.stack(
+                observation=["observation_time", "site"],
+                fluxes=["flux_time", "dim_y", "dim_x"]
+            ).values
+        )
+
     def test_align_partial(self):
         """Test aligning the full influence function.
 
@@ -2983,8 +3003,8 @@ class TestObsOpAligners(unittest2.TestCase):
                  "dim_y",
                  "dim_x"),
                 np.ones((N_OBS_TIMES, N_SITES,
-                         FORECAST_LENGTH, NY, NX)))
-            ),
+                         FORECAST_LENGTH, NY, NX))
+            )),
             dict(
                 observation_time=pd.date_range(
                     "2010-01-01", periods=N_OBS_TIMES, freq="1H"),
@@ -3005,13 +3025,15 @@ class TestObsOpAligners(unittest2.TestCase):
             np.array("2010-01-01", dtype="M8[ns]"))
         ds.coords["flux_time"] = flux_time
 
+        ds_to_test = ds.influence_function.isel_points(
+            dim="observation",
+            site=range(N_SITES),
+            observation_time=range(0, 3 * N_SITES, 3),
+        ).set_index(observation=["observation_time", "site"])
+
         aligned_data = (
             inversion.observation_operator.align_partial_obs_op(
-                ds.influence_function.isel_points(
-                    dim="observation",
-                    site=range(N_SITES),
-                    observation_time=range(0, 3 * N_SITES, 3),
-                ).set_index(observation=["observation_time", "site"])
+                ds_to_test
             )
         )
 
@@ -3019,6 +3041,25 @@ class TestObsOpAligners(unittest2.TestCase):
         self.assertEqual(aligned_data.blocksize, (1, NY * NX))
         np_tst.assert_allclose(aligned_data.data, 1)
         np_tst.assert_allclose(np.diff(aligned_data.indptr), FORECAST_LENGTH)
+
+        xarray_aligned_ds = xarray.concat(
+            [
+                here_infl.set_index(
+                    time_before_observation="flux_time"
+                ).rename(
+                    dict(time_before_observation="flux_time")
+                )
+                for here_infl in ds_to_test
+            ],
+            "observation"
+        ).fillna(0)
+
+        np_tst.assert_allclose(
+            aligned_data.toarray(),
+            xarray_aligned_ds.stack(
+                fluxes=["flux_time", "dim_y", "dim_x"]
+            ).values
+        )
 
 
 if __name__ == "__main__":
