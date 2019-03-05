@@ -3010,7 +3010,7 @@ class TestObsOpAligners(unittest2.TestCase):
             xarray_aligned_ds.stack(
                 observation=["observation_time", "site"],
                 fluxes=["flux_time", "dim_y", "dim_x"]
-            ).values
+            ).transpose("observation", "fluxes").values
         )
 
     def test_align_partial(self):
