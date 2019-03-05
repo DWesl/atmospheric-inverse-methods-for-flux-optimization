@@ -3231,6 +3231,27 @@ class TestYMKronBSRQuadraticForm(unittest2.TestCase):
         )
         cholesky(result)
 
+    def test_bad_shape(self):
+        """Test failure on mismatched shapes."""
+        mat1 = scipy.linalg.toeplitz([1, .5, .25])
+        corr_fun = (
+            inversion.correlations.ExponentialCorrelation(2))
+        corr_op = (
+            inversion.correlations.HomogeneousIsotropicCorrelation
+            .from_function(corr_fun, (4, 5)))
+
+        full_op = inversion.linalg.DaskKroneckerProductOperator(
+            mat1, corr_op)
+
+        obs_op = scipy.sparse.bsr_matrix(
+            (12, full_op.shape[0] + 3),
+            blocksize=(3, corr_op.shape[0] + 1),
+            dtype=DTYPE)
+
+        with self.assertRaises(ValueError):
+            inversion.util.ym_kronecker_quadratic_form_bsr(
+                obs_op, full_op)
+
 
 if __name__ == "__main__":
     unittest2.main()
