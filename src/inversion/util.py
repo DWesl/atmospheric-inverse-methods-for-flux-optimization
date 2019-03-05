@@ -160,18 +160,18 @@ def method_common(inversion_method):
         elif not isinstance(observation_operator, _LinearOperator):
             observation_operator = atleast_2d(observation_operator)
 
+        if (((reduced_background_covariance is None) ^
+             (reduced_observation_operator is None))):
+            raise ValueError("Need reduced versions of both B and H")
+
         if reduced_background_covariance is not None:
             if not isinstance(reduced_background_covariance, LinearOperator):
                 reduced_background_covariance = atleast_2d(
                     reduced_background_covariance)
 
-            if reduced_observation_operator is None:
-                raise ValueError("Need reduced versions of both B and H")
             if not isinstance(reduced_observation_operator, LinearOperator):
                 reduced_observation_operator = atleast_2d(
                     reduced_observation_operator)
-        elif reduced_observation_operator is not None:
-            raise ValueError("Need reduced versions of both B and H")
 
         analysis_estimate, analysis_covariance = (
             inversion_method(background, background_covariance,
