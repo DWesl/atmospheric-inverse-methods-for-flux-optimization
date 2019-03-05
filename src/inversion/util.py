@@ -8,7 +8,7 @@ from __future__ import absolute_import
 import functools
 
 import numpy as np
-from numpy import atleast_1d, atleast_2d
+from numpy import atleast_1d, atleast_2d, einsum
 from scipy.sparse.linalg import LinearOperator
 
 import dask.array as da
@@ -216,3 +216,63 @@ def method_common(inversion_method):
 
         return analysis_estimate, analysis_covariance
     return wrapper
+
+
+def ym_kronecker_quadratic_form_bsr(matrix, operator):
+    """Calculate matrix @ operator @ matrix.T.
+
+    Parameters
+    ----------
+    matrix: scipy.sparse.bsr_matrix
+    operator: inversion.linalg.DaskKroneckerProductOperator
+
+    Returns
+    -------
+    array_like
+
+    Raises
+    ------
+    ValueError
+        If the block sizes do not match
+    """
+    result_side = matrix.shape[0]
+    block_size = matrix.blocksize[1]
+    sites_per_block = matrix.blocksize[0]
+
+    left_operator = operator._operator1
+    right_operator = operator._operator2
+    n_blocks = left_operator.shape[1]
+
+    if right_operator.shape[1] != block_size:
+        raise ValueError("Block sizes do not match")
+
+    result = np.empty((result_side, result_side),
+                      dtype=matrix.dtype,
+                      order="F")
+
+    row_start = matrix.indptr
+    columns_for_row = matrix.indices
+    data = matrix.data
+
+    for i_block in range(result_side // sites_per_block):
+        i_row = sites_per_block * i_block
+        this_row_start = row_start[i_block]
+        next_row_start = row_start[i_block + 1]
+
+        relevant_left_columns = left_operator[
+            :,
+            columns_for_row[this_row_start:next_row_start]
+        ]
+        relevant_blocks_of_matrix = data[this_row_start:next_row_start]
+        result[:, i_row:i_row + sites_per_block] = matrix.dot(
+            right_operator.dot(
+                einsum(
+                    "ij,jlk->kil",
+                    relevant_left_columns,
+                    relevant_blocks_of_matrix,
+                    order="F"
+                ).reshape(block_size, n_blocks * sites_per_block)
+            ).reshape(block_size * n_blocks, sites_per_block)
+        )
+
+    return result

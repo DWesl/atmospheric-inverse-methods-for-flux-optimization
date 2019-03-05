@@ -3062,5 +3062,33 @@ class TestObsOpAligners(unittest2.TestCase):
         )
 
 
+class TestYMKronBSRQuadraticForm(unittest2.TestCase):
+    """Test ym_kronecker_quadratic_form_bsr."""
+
+    def test_empty(self):
+        """Test on an empty matrix."""
+        mat1 = scipy.linalg.toeplitz([1, .5, .25])
+        corr_fun = (
+            inversion.correlations.ExponentialCorrelation(2))
+        corr_op = (
+            inversion.correlations.HomogeneousIsotropicCorrelation
+            .from_function(corr_fun, (4, 5)))
+
+        full_op = inversion.linalg.DaskKroneckerProductOperator(
+            mat1, corr_op)
+
+        obs_op = scipy.sparse.bsr_matrix(
+            (12, full_op.shape[0]),
+            blocksize=(3, corr_op.shape[0]),
+            dtype=DTYPE)
+
+        result = inversion.util.ym_kronecker_quadratic_form_bsr(
+            obs_op, full_op)
+
+        np_tst.assert_allclose(result, 0)
+        self.assertSequenceEqual(
+            result.shape, (obs_op.shape[0], obs_op.shape[0]))
+
+
 if __name__ == "__main__":
     unittest2.main()
