@@ -10,11 +10,13 @@ import functools
 import numpy as np
 from numpy import atleast_1d, atleast_2d, einsum
 from scipy.sparse.linalg import LinearOperator
+from scipy.sparse import bsr_matrix
 
 import dask.array as da
 
 from .linalg import DaskKroneckerProductOperator, kron, solve
 from .linalg_interface import ProductLinearOperator, tolinearoperator
+from .linalg_interface import DaskMatrixLinearOperator as _MatrixLinearOperator
 
 ARRAY_TYPES = (np.ndarray, da.Array)
 """Array types for determining Kronecker product type.
@@ -153,7 +155,9 @@ def method_common(inversion_method):
         if not isinstance(observation_covariance, _LinearOperator):
             observation_covariance = atleast_2d(observation_covariance)
 
-        if not isinstance(observation_operator, _LinearOperator):
+        if isinstance(observation_operator, bsr_matrix):
+            observation_operator = _MatrixLinearOperator(observation_operator)
+        elif not isinstance(observation_operator, _LinearOperator):
             observation_operator = atleast_2d(observation_operator)
 
         if reduced_background_covariance is not None:

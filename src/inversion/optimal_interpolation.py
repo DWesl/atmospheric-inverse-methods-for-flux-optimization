@@ -4,10 +4,13 @@ Also known as Kalman Matrix Inversion or batch inversion.
 """
 import scipy.linalg
 from scipy.sparse.linalg import LinearOperator
+from scipy.sparse import bsr_matrix as _bsr_matrix
 
-from inversion.util import method_common
+from inversion.util import method_common, ym_kronecker_quadratic_form_bsr
 from inversion.linalg import (ProductLinearOperator, ARRAY_TYPES,
-                              solve, tolinearoperator)
+                              solve, tolinearoperator, MatrixLinearOperator)
+from inversion.linalg import (
+    DaskKroneckerProductOperator as _DaskKroneckerProductOperator)
 
 
 @method_common
@@ -333,7 +336,16 @@ def save_sum(background, background_covariance,
     innovation = (observations - projected_obs)
 
     # B_{proj} = HBH^T
-    if isinstance(observation_operator, ARRAY_TYPES):
+    if ((isinstance(
+            background_covariance,
+            _DaskKroneckerProductOperator) and
+         ((isinstance(observation_operator,
+                      MatrixLinearOperator) and
+           isinstance(observation_operator.A,
+                      _bsr_matrix))))):
+        projected_background_covariance = ym_kronecker_quadratic_form_bsr(
+            observation_operator.A, background_covariance)
+    elif isinstance(observation_operator, ARRAY_TYPES):
         # TODO: test this
         if hasattr(background_covariance, "quadratic_form"):
             projected_background_covariance = (

@@ -6,6 +6,7 @@ import numpy as np
 from numpy import promote_types
 from numpy import empty, asarray, atleast_2d
 
+from scipy.sparse import spmatrix as _spmatrix
 from scipy.sparse.linalg import aslinearoperator
 from scipy.sparse.linalg.interface import (
     LinearOperator,
@@ -309,6 +310,8 @@ class DaskLinearOperator(LinearOperator):
             return ProductLinearOperator(self, x)
         elif np.isscalar(x):
             return _DaskScaledLinearOperator(self, x)
+        elif isinstance(x, _spmatrix):
+            return ProductLinearOperator(self, DaskMatrixLinearOperator(x))
         else:
             x = asarray(x)
 

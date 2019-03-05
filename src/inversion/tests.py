@@ -403,6 +403,38 @@ class TestInversionSimple(unittest2.TestCase):
                                       scipy.optimize.OptimizeResult)
                 self.assertTrue(hasattr(conv_err, "hess_inv"))
 
+    def test_bsr_ymkron_handling(self):
+        """Check that everything still works with BSR and YMKron."""
+        mat1 = scipy.linalg.toeplitz([1, .5, .25, .125, .0625])
+        corr_fun = (
+            inversion.correlations.ExponentialCorrelation(2))
+        corr_op = (
+            inversion.correlations.HomogeneousIsotropicCorrelation
+            .from_function(corr_fun, (4, 5)))
+
+        bg_corr = inversion.linalg.DaskKroneckerProductOperator(
+            mat1, corr_op)
+
+        data = np.ones((8, 3, corr_op.shape[0]), dtype=DTYPE)
+        indices = np.array((0, 1, 1, 2, 2, 3, 3, 4), dtype=int)
+        indptr = np.array((0, 2, 4, 6, 8))
+        obs_op = scipy.sparse.bsr_matrix((data, indices, indptr))
+
+        background = np.zeros((bg_corr.shape[1]), dtype=DTYPE)
+        obs = np.ones(obs_op.shape[0], dtype=DTYPE)
+        obs_cov = np.eye(obs_op.shape[0])
+
+        for method in ALL_METHODS:
+            name = getname(method)
+
+            with self.subTest(method=name):
+                if "chol" in name.lower():
+                    raise unittest2.SkipTest(
+                        "Known Failure: "
+                        "Cholesky factorization of linear operators")
+                method(background, bg_corr,
+                       obs, obs_cov, obs_op)
+
 
 class TestGaussianNoise(unittest2.TestCase):
     """Test the properties of the gaussian noise."""
