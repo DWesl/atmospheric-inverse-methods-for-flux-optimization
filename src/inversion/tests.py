@@ -3089,6 +3089,116 @@ class TestYMKronBSRQuadraticForm(unittest2.TestCase):
         self.assertSequenceEqual(
             result.shape, (obs_op.shape[0], obs_op.shape[0]))
 
+    def test_simple(self):
+        """Test on a matrix of ones."""
+        mat1 = scipy.linalg.toeplitz([1, .5, .25, .125, .0625])
+        corr_fun = (
+            inversion.correlations.ExponentialCorrelation(2))
+        corr_op = (
+            inversion.correlations.HomogeneousIsotropicCorrelation
+            .from_function(corr_fun, (4, 5)))
+
+        full_op = inversion.linalg.DaskKroneckerProductOperator(
+            mat1, corr_op)
+
+        data = np.ones((8, 3, corr_op.shape[0]), dtype=DTYPE)
+        indices = np.array((0, 1, 1, 2, 2, 3, 3, 4), dtype=int)
+        indptr = np.array((0, 2, 4, 6, 8))
+        obs_op = scipy.sparse.bsr_matrix((data, indices, indptr))
+        obs_mat = obs_op.toarray()
+
+        result = inversion.util.ym_kronecker_quadratic_form_bsr(
+            obs_op, full_op)
+
+        np_tst.assert_allclose(
+            result,
+            result.T
+        )
+        np_tst.assert_allclose(
+            result,
+            obs_op.dot(full_op.dot(obs_mat.T))
+        )
+        self.assertSequenceEqual(
+            result.shape, (obs_op.shape[0], obs_op.shape[0]))
+
+    def test_harder(self):
+        """Test on a more complicated matrix."""
+        mat1 = scipy.linalg.toeplitz([1, .5, .25, .125, .0625])
+        corr_fun = (
+            inversion.correlations.ExponentialCorrelation(2))
+        corr_op = (
+            inversion.correlations.HomogeneousIsotropicCorrelation
+            .from_function(corr_fun, (4, 5)))
+
+        full_op = inversion.linalg.DaskKroneckerProductOperator(
+            mat1, corr_op)
+
+        data = np.arange(24 * corr_op.shape[0], dtype=DTYPE).reshape(
+            (8, 3, corr_op.shape[0]))
+        indices = np.array((0, 1, 1, 2, 2, 3, 3, 4), dtype=int)
+        indptr = np.array((0, 2, 4, 6, 8))
+        obs_op = scipy.sparse.bsr_matrix((data, indices, indptr))
+        obs_mat = obs_op.toarray()
+
+        result = inversion.util.ym_kronecker_quadratic_form_bsr(
+            obs_op, full_op)
+
+        np_tst.assert_allclose(
+            result,
+            result.T
+        )
+        np_tst.assert_allclose(
+            result,
+            obs_op.dot(full_op.dot(obs_mat.T))
+        )
+
+        data = np.arange(24 * corr_op.shape[0], dtype=DTYPE).reshape(
+            (8, 3, corr_op.shape[0]), order="F")
+        obs_op = scipy.sparse.bsr_matrix((data, indices, indptr))
+        obs_mat = obs_op.toarray()
+        result = inversion.util.ym_kronecker_quadratic_form_bsr(
+            obs_op, full_op)
+
+        np_tst.assert_allclose(
+            result,
+            result.T
+        )
+        np_tst.assert_allclose(
+            result,
+            obs_op.dot(full_op.dot(obs_mat.T))
+        )
+
+    def test_random(self):
+        """Test on a more complicated matrix."""
+        mat1 = scipy.linalg.toeplitz([1, .5, .25, .125, .0625])
+        corr_fun = (
+            inversion.correlations.ExponentialCorrelation(2))
+        corr_op = (
+            inversion.correlations.HomogeneousIsotropicCorrelation
+            .from_function(corr_fun, (4, 5)))
+
+        full_op = inversion.linalg.DaskKroneckerProductOperator(
+            mat1, corr_op)
+
+        indices = np.array((0, 1, 1, 2, 2, 3, 3, 4), dtype=int)
+        indptr = np.array((0, 2, 4, 6, 8))
+
+        data = np.random.standard_normal((8, 3, corr_op.shape[0]))
+        obs_op = scipy.sparse.bsr_matrix((data, indices, indptr))
+        obs_mat = obs_op.toarray()
+        result = inversion.util.ym_kronecker_quadratic_form_bsr(
+            obs_op, full_op)
+
+        np_tst.assert_allclose(
+            result,
+            result.T
+        )
+        np_tst.assert_allclose(
+            result,
+            obs_op.dot(full_op.dot(obs_mat.T))
+        )
+        cholesky(result)
+
 
 if __name__ == "__main__":
     unittest2.main()

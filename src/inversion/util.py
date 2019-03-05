@@ -259,20 +259,28 @@ def ym_kronecker_quadratic_form_bsr(matrix, operator):
         this_row_start = row_start[i_block]
         next_row_start = row_start[i_block + 1]
 
+        # flux_time x nz_blocks
         relevant_left_columns = left_operator[
             :,
             columns_for_row[this_row_start:next_row_start]
         ]
+        # nz_blocks x site x space
         relevant_blocks_of_matrix = data[this_row_start:next_row_start]
         result[:, i_row:i_row + sites_per_block] = matrix.dot(
             right_operator.dot(
+                # space x flux_time x site
                 einsum(
                     "ij,jlk->kil",
                     relevant_left_columns,
                     relevant_blocks_of_matrix,
                     order="F"
-                ).reshape(block_size, n_blocks * sites_per_block)
-            ).reshape(block_size * n_blocks, sites_per_block)
+                ).reshape(block_size, n_blocks * sites_per_block,
+                          order="F")
+                # space x (flux_time * site)
+            ).reshape(block_size * n_blocks, sites_per_block,
+                      order="F")
+            # (space * flux_time) x site
         )
+        # (obs_time * site) x site
 
     return result
