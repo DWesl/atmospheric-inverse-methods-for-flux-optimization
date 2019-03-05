@@ -602,8 +602,10 @@ temporal_correlation_ds = xarray.DataArray(
 # group will each be the number of elements in that group.
 reduced_temporal_correlation_ds = (
     temporal_correlation_ds
-    .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).mean("flux_time")
-    .resample(flux_time_adjoint=UNCERTAINTY_TEMPORAL_RESOLUTION).mean("flux_time_adjoint")
+    .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION)
+    .mean("flux_time")
+    .resample(flux_time_adjoint=UNCERTAINTY_TEMPORAL_RESOLUTION)
+    .mean("flux_time_adjoint")
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
 print(reduced_temporal_correlation_ds.values)
@@ -656,7 +658,8 @@ flush_output_streams()
 
 spatial_covariance = inversion.covariances.CorrelationStandardDeviation(
     spatial_correlations, reduced_flux_stds)
-print(datetime.datetime.now(UTC).strftime("%c"), "Have full spatial covariance")
+print(datetime.datetime.now(UTC).strftime("%c"),
+      "Have full spatial covariance")
 flush_output_streams()
 
 reduced_spatial_covariance = spatial_correlation_remapper.reshape(
@@ -668,7 +671,8 @@ reduced_spatial_covariance = spatial_correlation_remapper.reshape(
         ).T
     )
 )
-print(datetime.datetime.now(UTC).strftime("%c"), "Have reduced spatial covariance")
+print(datetime.datetime.now(UTC).strftime("%c"),
+      "Have reduced spatial covariance")
 flush_output_streams()
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial covariances")
@@ -692,24 +696,18 @@ reduced_influences = (
         "dim_x",
         pd.interval_range(
             0,
-            aligned_influences.indexes["dim_x"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+            (aligned_influences.indexes["dim_x"][-1] +
+             UNCERTAINTY_FLUX_RESOLUTION),
             freq=UNCERTAINTY_FLUX_RESOLUTION,
             closed="left")
-        # np.arange(
-        #     -1,
-        #     aligned_influences.indexes["dim_x"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
-        #     UNCERTAINTY_FLUX_RESOLUTION),
     ).sum("dim_x")
     .groupby_bins(
         "dim_y",
         pd.interval_range(
             0,
-            aligned_influences.indexes["dim_y"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+            (aligned_influences.indexes["dim_y"][-1] +
+             UNCERTAINTY_FLUX_RESOLUTION),
             freq=UNCERTAINTY_FLUX_RESOLUTION, closed="left")
-        # np.arange(
-        #     -1,
-        #      aligned_influences.indexes["dim_y"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
-        #      UNCERTAINTY_FLUX_RESOLUTION),
     ).sum("dim_y")
     .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).sum("flux_time")
 ).rename(dim_x_bins="reduced_dim_x", dim_y_bins="reduced_dim_y",
@@ -850,12 +848,13 @@ flush_output_streams()
 posterior_covariance_ds = xarray.Dataset(
     dict(
         reduced_posterior_covariance=(
-            ("reduced_flux_time_adjoint",
-             "reduced_dim_y_adjoint",
-             "reduced_dim_x_adjoint",
-             "reduced_flux_time",
-             "reduced_dim_y",
-             "reduced_dim_x",
+            (
+                "reduced_flux_time_adjoint",
+                "reduced_dim_y_adjoint",
+                "reduced_dim_x_adjoint",
+                "reduced_flux_time",
+                "reduced_dim_y",
+                "reduced_dim_x",
             ),
             reduced_posterior_covariances.reshape(
                 reduced_temporal_correlation_ds.shape[0],
@@ -893,8 +892,12 @@ posterior_covariance_ds = xarray.Dataset(
         ),
     ),
     dict(
-        reduced_flux_time=reduced_temporal_correlation_ds.coords["flux_time"].values,
-        reduced_flux_time_adjoint=reduced_temporal_correlation_ds.coords["flux_time_adjoint"].values,
+        reduced_flux_time=(
+            reduced_temporal_correlation_ds
+            .coords["flux_time"].values),
+        reduced_flux_time_adjoint=(
+            reduced_temporal_correlation_ds
+            .coords["flux_time_adjoint"].values),
         wrf_proj=reduced_influences.coords["wrf_proj"]
     ),
     posterior_global_atts
