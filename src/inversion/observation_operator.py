@@ -42,12 +42,10 @@ def align_full_obs_op(obs_op):
 
     Returns
     -------
-    obs_op_aligned: xarray.DataArray
+    obs_op_aligned: scipy.sparse.bsr_matrix
         dims: observation, flux
-        MultiIndices:
-            observation_time, site
-            flux_time, y, x
-        data backed by scipy.sparse.bsr_matrix
+        observation is composed of observation_time, site
+        flux is composed of flux_time, y, x
         bsr_matrix does not support indexing
     """
     flux_time = obs_op.coords["flux_time"]
@@ -102,12 +100,9 @@ def align_partial_obs_op(obs_op, required_shape=None):
 
     Returns
     -------
-    obs_op_aligned: xarray.DataArray
+    obs_op_aligned: scipy.sparse.bsr_matrix
         dims: observation, flux
-        MultiIndices:
-            observation_time, site
-            flux_time, y, x
-        data backed by scipy.sparse.bsr_matrix
+        flux is composed of flux_time, y, x
         bsr_matrix does not support indexing
     """
     flux_time = obs_op.coords["flux_time"]

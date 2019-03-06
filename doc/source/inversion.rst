@@ -34,6 +34,13 @@ High-level wrappers
 .. toctree::
    inversion.wrapper
 
+Helpers for real-data inversions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+   inversion.observation_operator
+   inversion.remapper
+
 Other utilities
 ~~~~~~~~~~~~~~~
 
