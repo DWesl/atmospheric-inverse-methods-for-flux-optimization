@@ -84,7 +84,7 @@ def align_full_obs_op(obs_op):
     return aligned_data
 
 
-def align_partial_obs_op(obs_op):
+def align_partial_obs_op(obs_op, required_shape=None):
     """Align observation operator on flux_time.
 
     Parameters
@@ -96,6 +96,9 @@ def align_partial_obs_op(obs_op):
         observation_time monotone decreasing
         only one dim each with 'y' and 'x'
         obs_op[-1, -1] is earliest influence map
+    required_shape: tuple of int, optional
+        The share required of the returned
+        matrix.
 
     Returns
     -------
@@ -142,10 +145,10 @@ def align_partial_obs_op(obs_op):
     aligned_data = scipy.sparse.bsr_matrix(
         (data.data.reshape(n_obs * n_times_back, 1, n_space),
          (row_offset_start[:, newaxis] + column_offset[newaxis, :]).flat,
-         np.arange(flux_time.shape[0] + 1) * flux_time.shape[1]))
+         np.arange(flux_time.shape[0] + 1) * flux_time.shape[1]),
+        shape=required_shape)
     # rows: obs_time, site stack
     # cols: flux_time, space stack
     aligned_data.ndim = 2
 
     return aligned_data
-            

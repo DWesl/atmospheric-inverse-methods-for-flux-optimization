@@ -34,6 +34,7 @@ import inversion.variational
 import inversion.correlations
 import inversion.covariances
 from inversion.util import kronecker_product
+from inversion.observation_operator import align_partial_obs_op
 from inversion.linalg import asarray, kron
 from inversion.noise import gaussian_noise
 import cf_acdd
@@ -465,25 +466,29 @@ dimension_order.insert(dimension_order.index("time_before_observation"),
 dimension_order.insert(dimension_order.index("observation_time"),
                        "observation")
 dimension_order = tuple(dimension_order)
-aligned_influences = xarray.concat(
-    [here_infl.set_index(
-        time_before_observation="flux_time").rename(
-            dict(time_before_observation="flux_time"))
-     for here_infl in INFLUENCE_FUNCTIONS.sel_points(
-         site=site_index, observation_time=pd_obs_index)],
-    "observation").set_index(
-    observation=("observation_time", "site"))
+INFLUENCE_FUNCTIONS_TO_USE = INFLUENCE_FUNCTIONS.sel_points(
+    site=site_index, observation_time=pd_obs_index,
+    dim="observation"
+).set_index(
+    observation=["observation_time", "site"]
+).transpose("observation", "time_before_observation",
+            "dim_y", "dim_x")
+aligned_influences = align_partial_obs_op(
+    INFLUENCE_FUNCTIONS_TO_USE,
+    (INFLUENCE_FUNCTIONS_TO_USE.shape[0],
+     len(FLUX_TIMES_INDEX))
+)
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Aligned flux times in influence function, "
       "aligning fluxes with influence function")
 flush_output_streams()
-aligned_influences, aligned_true_fluxes, aligned_prior_fluxes = (
-    xarray.align(
-        aligned_influences,
-        TRUE_FLUXES_MATCHED[TRUE_FLUX_NAME],
-        PRIOR_FLUXES_MATCHED[PRIOR_FLUX_NAME],
-        exclude=("dim_x", "dim_y"),
-        join="outer", copy=False))
+min_infl_time = INFLUENCE_FUNCTIONS.coords["flux_time"].min()
+max_infl_time = INFLUENCE_FUNCTIONS.coords["flux_time"].max()
+min_flux_time = PRIOR_FLUXES_MATCHED.coords["flux_time"].min()
+max_flux_time = PRIOR_FLUXES_MATCHED.coords["flux_time"].max()
+
+aligned_true_fluxes = TRUE_FLUXES_MATCHED[TRUE_FLUX_NAME]
+aligned_prior_fluxes = PRIOR_FLUXES_MATCHED[PRIOR_FLUX_NAME]
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Aligned fluxes and influence function")
 flush_output_streams()
@@ -491,14 +496,10 @@ aligned_true_fluxes = aligned_true_fluxes.transpose(
     "flux_time", "dim_y", "dim_x")
 aligned_prior_fluxes = aligned_prior_fluxes.transpose(
     "flux_time", "dim_y", "dim_x", "realization")
-aligned_influences = aligned_influences.transpose(
-    "observation", "flux_time", "dim_y", "dim_x")
 print(datetime.datetime.now(UTC).strftime("%c"), "Rechunked to square")
 flush_output_streams()
-aligned_influences = aligned_influences.fillna(0)
 aligned_true_fluxes.load()
 aligned_prior_fluxes.load()
-aligned_influences.load()
 print(datetime.datetime.now(UTC).strftime("%c"), "Loaded data")
 flush_output_streams()
 
@@ -689,30 +690,13 @@ flush_output_streams()
 #     ("reduced_dim_y", "reduced_dim_x", "dim_y", "dim_x"),
 #     "spatial_obs_op_remapper_ds",
 # )
+reduced_influences_data = aligned_influences.data.dot(
+    spatial_obs_op_remapper.reshape(-1, N_GRID_POINTS).T
+)
 
 reduced_influences = (
-    aligned_influences
-    .groupby_bins(
-        "dim_x",
-        pd.interval_range(
-            0,
-            (aligned_influences.indexes["dim_x"][-1] +
-             UNCERTAINTY_FLUX_RESOLUTION),
-            freq=UNCERTAINTY_FLUX_RESOLUTION,
-            closed="left")
-    ).sum("dim_x")
-    .groupby_bins(
-        "dim_y",
-        pd.interval_range(
-            0,
-            (aligned_influences.indexes["dim_y"][-1] +
-             UNCERTAINTY_FLUX_RESOLUTION),
-            freq=UNCERTAINTY_FLUX_RESOLUTION, closed="left")
-    ).sum("dim_y")
-    .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).sum("flux_time")
-).rename(dim_x_bins="reduced_dim_x", dim_y_bins="reduced_dim_y",
-         flux_time="reduced_flux_time")
-reduced_influences.load()
+    aligned_influences.dot(spatial_obs_op_remapper.reshape(-1, N_GRID_POINTS).T)
+)
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have influence for monthly average plots")
 flush_output_streams()

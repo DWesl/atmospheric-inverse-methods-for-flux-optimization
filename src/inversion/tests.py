@@ -3093,6 +3093,17 @@ class TestObsOpAligners(unittest2.TestCase):
             ).values
         )
 
+        requested_shape = (aligned_data.shape[0],
+                           aligned_data.shape[1] + 3 * aligned_data.blocksize[1])
+        bigger_aligned_data = (
+            inversion.observation_operator.align_partial_obs_op(
+                ds_to_test,
+                requested_shape
+            )
+        )
+        self.assertSequenceEqual(bigger_aligned_data.shape,
+                                 requested_shape)
+
 
 class TestYMKronBSRQuadraticForm(unittest2.TestCase):
     """Test ym_kronecker_quadratic_form_bsr."""
