@@ -35,6 +35,7 @@ import pandas as pd
 import xarray
 
 import inversion.optimal_interpolation
+import inversion.observation_operator
 import inversion.correlations
 import inversion.covariances
 import inversion.variational
@@ -2889,7 +2890,7 @@ class TestRemapper(unittest2.TestCase):
 
     def test_simple(self):
         """Test for the simplest possible case."""
-        extensive, intensive = inversion.remapper.get_remappers(
+        extensive, intensive = inversion.remapper.get_spatial_remappers(
             (6, 6), 3)
 
         old_data = np.arange(36, dtype=float).reshape(6, 6)
@@ -2910,7 +2911,7 @@ class TestRemapper(unittest2.TestCase):
 
     def test_harder(self):
         """Test for domains that do not divide evenly."""
-        extensive, intensive = inversion.remapper.get_remappers(
+        extensive, intensive = inversion.remapper.get_spatial_remappers(
             (7, 7), 3)
 
         old_data = np.arange(49, dtype=float).reshape(7, 7)
@@ -2931,6 +2932,123 @@ class TestRemapper(unittest2.TestCase):
              [29, 32, 34],
              [43, 46, 48]])
 
+    def test_remap_time(self):
+        """Test the function for remapping in time."""
+        N_OBS_TIMES = 10
+        N_SITES = 2
+        FORECAST_LENGTH = 40
+        NY = 3
+        NX = 4
+
+        ds = xarray.Dataset(
+            dict(influence_function=(
+                ("observation_time",
+                 "site",
+                 "time_before_observation",
+                 "dim_y",
+                 "dim_x"),
+                np.ones((N_OBS_TIMES, N_SITES,
+                         FORECAST_LENGTH, NY, NX))
+            )),
+            dict(
+                observation_time=pd.date_range(
+                    "2010-01-01", periods=N_OBS_TIMES, freq="2H"),
+                site=range(N_SITES),
+                time_before_observation=pd.timedelta_range(
+                    0, periods=FORECAST_LENGTH, freq="6H"),
+                dim_y=np.linspace(0, 2100, NY),
+                dim_x=np.linspace(0, 2100, NX),
+            ),
+        )
+        flux_time = (
+            np.floor(
+                (ds.coords["observation_time"] -
+                 ds.coords["time_before_observation"] -
+                 np.array("2010-01-01", dtype="M8[ns]")) /
+                np.array(6, dtype="m8[h]").astype("m8[ns]")) *
+            np.array(6, dtype="m8[h]").astype("m8[ns]") +
+            np.array("2010-01-01", dtype="M8[ns]"))
+        ds.coords["flux_time"] = flux_time
+
+        aligned_data = (
+            inversion.observation_operator.align_full_obs_op(
+                ds.influence_function))
+
+        xarray_aligned_ds = xarray.concat(
+            [
+                here_infl.set_index(
+                    time_before_observation="flux_time"
+                ).rename(
+                    dict(time_before_observation="flux_time")
+                )
+                for here_infl in ds["influence_function"]
+            ],
+            "observation_time"
+        ).fillna(0)
+
+        downsampled_matrix = inversion.remapper.remap_bsr_temporal(
+            xarray_aligned_ds.indexes["flux_time"],
+            "3D",
+            aligned_data)
+
+        xarray_resampled_ds = xarray_aligned_ds.resample(
+            flux_time="3D"
+        ).sum("flux_time")
+
+        self.assertIsInstance(downsampled_matrix, np.ndarray)
+        self.assertEqual(len(downsampled_matrix.shape), 2)
+        np_tst.assert_allclose(
+            downsampled_matrix,
+            xarray_resampled_ds.stack(
+                observation=["observation_time", "site"],
+                fluxes=["flux_time", "dim_y", "dim_x"]
+            ).transpose("observation", "fluxes").values
+        )
+
+    def test_temporal_remap_short_empty(self):
+        """Test remapping of a dataset that fits into one period."""
+        result = inversion.remapper.remap_bsr_temporal(
+            pd.date_range("2010-07-28 06:00", "2010-07-31", freq="6H"),
+            "7D",
+            scipy.sparse.bsr_matrix(
+                (20, 120),
+                blocksize=(4, 10)
+            )
+        )
+
+        np_tst.assert_allclose(
+            result,
+            np.zeros((20, 10))
+        )
+
+    def test_temporal_remap_fail(self):
+        """Test failure modes of the temporal remapping code."""
+        with self.assertRaises(
+            ValueError,
+            msg="Weekly frequencies are weird.  I don't support them here."
+        ):
+            inversion.remapper.remap_bsr_temporal(
+                pd.date_range("2010-01-01", "2010-01-10", freq="6H"),
+                "1W",
+                scipy.sparse.bsr_matrix(
+                    (20, 200),
+                    blocksize=(4, 5)
+                )
+            )
+
+        with self.assertRaises(
+            ValueError,
+            msg="Index does not correspond to structure passed."
+        ):
+            inversion.remapper.remap_bsr_temporal(
+                pd.date_range("2010-01-01", "2010-01-10", freq="6H"),
+                "7D",
+                scipy.sparse.bsr_matrix(
+                    (20, 160),
+                    blocksize=(4, 20)
+                )
+            )
+
 
 class TestObsOpAligners(unittest2.TestCase):
     """Test the alignment fucntions.
@@ -2945,9 +3063,6 @@ class TestObsOpAligners(unittest2.TestCase):
 
         The input is the influence function straignt from the file.
         """
-        import xarray
-        import pandas as pd
-        import inversion.observation_operator
         N_OBS_TIMES = 20
         N_SITES = 5
         FORECAST_LENGTH = 10
@@ -3018,9 +3133,6 @@ class TestObsOpAligners(unittest2.TestCase):
 
         The input is the influence function straignt from the file.
         """
-        import xarray
-        import pandas as pd
-        import inversion.observation_operator
         N_OBS_TIMES = 20
         N_SITES = 5
         FORECAST_LENGTH = 10
@@ -3093,8 +3205,10 @@ class TestObsOpAligners(unittest2.TestCase):
             ).values
         )
 
-        requested_shape = (aligned_data.shape[0],
-                           aligned_data.shape[1] + 3 * aligned_data.blocksize[1])
+        requested_shape = (
+            aligned_data.shape[0],
+            aligned_data.shape[1] + 3 * aligned_data.blocksize[1]
+        )
         bigger_aligned_data = (
             inversion.observation_operator.align_partial_obs_op(
                 ds_to_test,
