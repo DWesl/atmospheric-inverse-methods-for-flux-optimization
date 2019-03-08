@@ -12,6 +12,7 @@ import os.path
 import glob
 import sys
 
+import scipy.sparse
 import pandas as pd
 import dateutil.tz
 import numpy as np
@@ -476,7 +477,8 @@ INFLUENCE_FUNCTIONS_TO_USE = INFLUENCE_FUNCTIONS.sel_points(
 aligned_influences = align_partial_obs_op(
     INFLUENCE_FUNCTIONS_TO_USE,
     (INFLUENCE_FUNCTIONS_TO_USE.shape[0],
-     len(FLUX_TIMES_INDEX))
+     len(FLUX_TIMES_INDEX) *
+     N_GRID_POINTS)
 )
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Aligned flux times in influence function, "
@@ -553,9 +555,10 @@ spatial_correlations = (
 # # reduced_spatial_correlations = (
 # #     spatial_correlation_remapper.dot(
 # #         spatial_correlations.dot(spatial_correlation_remapper)))
+print(datetime.datetime.now(UTC).strftime("%c"), "Getting spatial remappers")
 import inversion.remapper
 spatial_obs_op_remapper, spatial_correlation_remapper = (
-    inversion.remapper.get_remappers(
+    inversion.remapper.get_spatial_remappers(
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
          len(TRUE_FLUXES_MATCHED.coords["dim_x"])),
         UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR))
@@ -694,8 +697,22 @@ reduced_influences_data = aligned_influences.data.dot(
     spatial_obs_op_remapper.reshape(-1, N_GRID_POINTS).T
 )
 
-reduced_influences = (
-    aligned_influences.dot(spatial_obs_op_remapper.reshape(-1, N_GRID_POINTS).T)
+reduced_influences = inversion.remapper.remap_bsr_temporal(
+    aligned_prior_fluxes.indexes["flux_time"],
+    UNCERTAINTY_TEMPORAL_RESOLUTION,
+    scipy.sparse.bsr_matrix(
+        (
+            reduced_influences_data,
+            aligned_influences.indices,
+            aligned_influences.indptr
+        ),
+        shape=(
+            aligned_influences.shape[0],
+            aligned_influences.shape[1] //
+            aligned_influences.blocksize[1] *
+            reduced_influences_data.shape[-1]
+        )
+    )
 )
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have influence for monthly average plots")
@@ -780,15 +797,9 @@ posterior, reduced_posterior_covariances = (
         prior_covariance,
         used_observations.values,
         observation_covariance,
-        aligned_influences.stack(
-            fluxes=("flux_time", "dim_y", "dim_x")
-        ).values,
-        # .reshape(aligned_influences.shape[0],
-        #          np.prod(aligned_influences.shape[-3:]))),
+        aligned_influences,
         reduced_prior_covariance,
-        reduced_influences.stack(
-            fluxes=("reduced_flux_time", "reduced_dim_y",
-                    "reduced_dim_x")).values
+        reduced_influences
     )
 )
 print(datetime.datetime.now(UTC).strftime("%c"),
@@ -842,11 +853,11 @@ posterior_covariance_ds = xarray.Dataset(
             ),
             reduced_posterior_covariances.reshape(
                 reduced_temporal_correlation_ds.shape[0],
-                reduced_influences.shape[2],
-                reduced_influences.shape[3],
+                REDUCED_NY,
+                REDUCED_NX,
                 reduced_temporal_correlation_ds.shape[1],
-                reduced_influences.shape[2],
-                reduced_influences.shape[3]
+                REDUCED_NY,
+                REDUCED_NX
             ),
             dict(
                 long_name="reduced_covariance_matrix_for_posterior_fluxes",
@@ -863,11 +874,11 @@ posterior_covariance_ds = xarray.Dataset(
              ),
             reduced_prior_covariance.reshape(
                 reduced_temporal_correlation_ds.shape[0],
-                reduced_influences.shape[2],
-                reduced_influences.shape[3],
+                REDUCED_NY,
+                REDUCED_NX,
                 reduced_temporal_correlation_ds.shape[1],
-                reduced_influences.shape[2],
-                reduced_influences.shape[3]
+                REDUCED_NY,
+                REDUCED_NX,
             ),
             dict(
                 long_name="reduced_covariance_matrix_for_prior_fluxes",
@@ -882,12 +893,17 @@ posterior_covariance_ds = xarray.Dataset(
         reduced_flux_time_adjoint=(
             reduced_temporal_correlation_ds
             .coords["flux_time_adjoint"].values),
-        wrf_proj=reduced_influences.coords["wrf_proj"]
+        wrf_proj=INFLUENCE_FUNCTIONS_TO_USE.coords["wrf_proj"]
     ),
     posterior_global_atts
 )
 
-RED_DIM_Y = reduced_influences.indexes["reduced_dim_y"]
+RED_DIM_Y = pd.interval_range(
+    start=INFLUENCE_FUNCTIONS_TO_USE.indexes["dim_y"][0],
+    end=INFLUENCE_FUNCTIONS_TO_USE.indexes["dim_y"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+    freq=UNCERTAINTY_FLUX_RESOLUTION,
+    closed="left"
+)
 posterior_covariance_ds.coords["reduced_dim_y"] = RED_DIM_Y.left
 posterior_covariance_ds.coords["reduced_dim_y_bnds"] = (
     ("reduced_dim_y", "bnds2"),
@@ -895,19 +911,24 @@ posterior_covariance_ds.coords["reduced_dim_y_bnds"] = (
     dict(closed="left")
 )
 posterior_covariance_ds.coords["reduced_dim_y"].attrs.update(
-    aligned_influences.coords["dim_y"].attrs)
+    INFLUENCE_FUNCTIONS_TO_USE.coords["dim_y"].attrs)
 posterior_covariance_ds.coords["reduced_dim_y"].attrs.update(
     dict(bounds="reduced_dim_y_bnds",
          adjoint="reduced_dim_y_adjoint"))
 
-RED_DIM_X = reduced_influences.indexes["reduced_dim_x"]
+RED_DIM_X = pd.interval_range(
+    start=INFLUENCE_FUNCTIONS_TO_USE.indexes["dim_x"][0],
+    end=INFLUENCE_FUNCTIONS_TO_USE.indexes["dim_x"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+    freq=UNCERTAINTY_FLUX_RESOLUTION,
+    closed="left"
+)
 posterior_covariance_ds.coords["reduced_dim_x"] = RED_DIM_X.left
 posterior_covariance_ds.coords["reduced_dim_x_bnds"] = (
     ("reduced_dim_x", "bnds2"),
     np.vstack([RED_DIM_X.left, RED_DIM_X.right]).T,
     dict(closed="left"))
 posterior_covariance_ds.coords["reduced_dim_x"].attrs.update(
-    aligned_influences.coords["dim_x"].attrs)
+    INFLUENCE_FUNCTIONS_TO_USE.coords["dim_x"].attrs)
 posterior_covariance_ds.coords["reduced_dim_x"].attrs.update(
     dict(bounds="reduced_dim_x_bnds",
          adjoint="reduced_dim_x"))
@@ -920,7 +941,7 @@ posterior_covariance_ds.coords["reduced_dim_y_adjoint_bnds"] = (
     dict(closed="left")
 )
 posterior_covariance_ds.coords["reduced_dim_y_adjoint"].attrs.update(
-    aligned_influences.coords["dim_y"].attrs)
+    INFLUENCE_FUNCTIONS_TO_USE.coords["dim_y"].attrs)
 posterior_covariance_ds.coords["reduced_dim_y_adjoint"].attrs.update(
     dict(bounds="reduced_dim_y_adjoint_bnds",
          adjoint="reduced_dim_y"))
@@ -931,6 +952,12 @@ posterior_covariance_ds.coords["reduced_dim_x_adjoint_bnds"] = (
     ("reduced_dim_x", "bnds2"),
     np.vstack([RED_DIM_X.left, RED_DIM_X.right]).T,
     dict(closed="left"))
+posterior_covariance_ds.coords["reduced_dim_x_adjoint"].attrs.update(
+    INFLUENCE_FUNCTIONS_TO_USE.coords["dim_x"].attrs)
+posterior_covariance_ds.coords["reduced_dim_x_adjoint"].attrs.update(
+    dict(bounds="reduced_dim_x_adjoint_bnds",
+         adjoint="reduced_dim_x"))
+
 posterior_covariance_ds.attrs.update(
     dict(title="posterior_flux_uncertainty",
          summary="Covariance matrices for prior and posterior fluxes.",
