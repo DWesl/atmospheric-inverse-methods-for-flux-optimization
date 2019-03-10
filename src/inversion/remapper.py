@@ -106,6 +106,11 @@ def remap_bsr_temporal(flux_time_index, new_freq, matrix_to_remap):
     result = zeros((matrix_to_remap.shape[0],
                     len(resampled),
                     blocksize[1]),
+                   # The reduced observation operator is used in:
+                   #   H.T @ vec
+                   #   la.solve(mat, H)
+                   # In both cases H being F-contiguous is an
+                   # advantage.
                    order="F",
                    dtype=matrix_to_remap.dtype)
 
@@ -124,11 +129,14 @@ def remap_bsr_temporal(flux_time_index, new_freq, matrix_to_remap):
         columns_old_to_new.append(
             range(len(flux_time_index)))
 
-    for j in range(len(resampled)):
-        for block_i in range(result.shape[0] // blocksize[0]):
-            list_of_columns = columns[
-                row_starts[block_i]:row_starts[block_i + 1]
-            ]
+    # The full observation operator, however, would almost certainly
+    # be C-contiguous.  Since that would likely dominate the time,
+    # have the outer loop be over rows here.
+    for block_i in range(result.shape[0] // blocksize[0]):
+        list_of_columns = columns[
+            row_starts[block_i]:row_starts[block_i + 1]
+        ]
+        for j in range(len(resampled)):
             columns_in_block = [
                 old_j for old_j in list_of_columns
                 if old_j in columns_old_to_new[j]
