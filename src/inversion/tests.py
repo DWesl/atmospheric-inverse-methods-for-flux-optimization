@@ -3215,8 +3215,14 @@ class TestObsOpAligners(unittest2.TestCase):
                 requested_shape
             )
         )
-        self.assertSequenceEqual(bigger_aligned_data.shape,
-                                 requested_shape)
+        self.assertSequenceEqual(
+            bigger_aligned_data.shape,
+            requested_shape
+        )
+        self.assertSequenceEqual(
+            bigger_aligned_data.toarray().shape,
+            requested_shape
+        )
 
 
 class TestYMKronBSRQuadraticForm(unittest2.TestCase):
