@@ -19,9 +19,9 @@ Inversion functions
 
 All inversion functions have the same signature and give similar
 answers: the difference is how they get there.  PSAS and Variational
-methods use iterative solvers. Optimal Interpolation uses a
-Gauss-Jordan solver.  Variational methods use a different but
-equivalent formulation of the problem.
+methods use iterative solvers for linear systems, where Optimal
+Interpolation uses Gauss-Jordan elimination.  Variational methods use
+a different but equivalent formulation of the problem.
 
 .. toctree::
    inversion.optimal_interpolation
@@ -36,6 +36,11 @@ High-level wrappers
 
 Helpers for real-data inversions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Helper functions to calculate the prior error covariance and
+observation operator at reduced resolution so the inversion routines
+can calculate the posterior error covariance in reasonable time and in
+a reasonable amount of storage.
 
 .. toctree::
    inversion.observation_operator
