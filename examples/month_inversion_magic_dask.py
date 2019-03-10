@@ -680,7 +680,6 @@ print(datetime.datetime.now(UTC).strftime("%c"),
 flush_output_streams()
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Have spatial covariances")
-print(reduced_spatial_covariance)
 flush_output_streams()
 
 ######################################################################
@@ -693,10 +692,21 @@ flush_output_streams()
 #     ("reduced_dim_y", "reduced_dim_x", "dim_y", "dim_x"),
 #     "spatial_obs_op_remapper_ds",
 # )
+spatial_obs_op_remap_matrix = (
+    spatial_obs_op_remapper.reshape(
+        REDUCED_N_GRID_POINTS, N_GRID_POINTS
+    )
+)
+print(datetime.datetime.now(UTC).strftime("%c"),
+      "Reducing influence function spatial resolution")
+flush_output_streams()
 reduced_influences_data = aligned_influences.data.dot(
-    spatial_obs_op_remapper.reshape(-1, N_GRID_POINTS).T
+    spatial_obs_op_remap_matrix.T
 )
 
+print(datetime.datetime.now(UTC).strftime("%c"),
+      "Reduced influence function spatial resolution, reducing temporal resolution")
+flush_output_streams()
 reduced_influences = inversion.remapper.remap_bsr_temporal(
     aligned_prior_fluxes.indexes["flux_time"],
     UNCERTAINTY_TEMPORAL_RESOLUTION,
@@ -714,6 +724,10 @@ reduced_influences = inversion.remapper.remap_bsr_temporal(
         )
     )
 )
+print(datetime.datetime.now(UTC).strftime("%c"),
+      "Reduced influence function temporal resolution")
+flush_output_streams()
+
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have influence for monthly average plots")
 flush_output_streams()
