@@ -692,17 +692,22 @@ flush_output_streams()
 #     ("reduced_dim_y", "reduced_dim_x", "dim_y", "dim_x"),
 #     "spatial_obs_op_remapper_ds",
 # )
-spatial_obs_op_remap_matrix = (
+spatial_obs_op_remap_matrix = scipy.sparse.csr_matrix(
     spatial_obs_op_remapper.reshape(
         REDUCED_N_GRID_POINTS, N_GRID_POINTS
     )
 )
+aligned_influence_data = aligned_influences.data.reshape(
+    aligned_influences.data.shape[0], N_GRID_POINTS
+)
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Reducing influence function spatial resolution")
 flush_output_streams()
-reduced_influences_data = aligned_influences.data.dot(
-    spatial_obs_op_remap_matrix.T
-)
+reduced_influences_data = (
+    spatial_obs_op_remap_matrix.dot(
+        aligned_influence_data.T
+    )
+).T.reshape(aligned_influences.data.shape[0], 1, REDUCED_N_GRID_POINTS)
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Reduced influence function spatial resolution, reducing temporal resolution")
@@ -727,6 +732,8 @@ reduced_influences = inversion.remapper.remap_bsr_temporal(
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Reduced influence function temporal resolution")
 flush_output_streams()
+del spatial_obs_op_remap_matrix, aligned_influence_data
+del reduced_influences_data
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have influence for monthly average plots")
