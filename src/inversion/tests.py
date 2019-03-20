@@ -3220,6 +3220,8 @@ class TestObsOpAligners(unittest2.TestCase):
                 fluxes=["flux_time", "dim_y", "dim_x"]
             ).transpose("observation", "fluxes").values
         )
+        self.assertLess(xarray_aligned_ds.coords["flux_time"][0],
+                        xarray_aligned_ds.coords["flux_time"][1])
 
     def test_align_partial(self):
         """Test aligning the full influence function.
@@ -3297,6 +3299,8 @@ class TestObsOpAligners(unittest2.TestCase):
                 fluxes=["flux_time", "dim_y", "dim_x"]
             ).values
         )
+        self.assertLess(xarray_aligned_ds.coords["flux_time"][0],
+                        xarray_aligned_ds.coords["flux_time"][1])
 
         requested_shape = (
             aligned_data.shape[0],
