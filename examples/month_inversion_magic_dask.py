@@ -151,6 +151,16 @@ OBS_DAYS = 30
 N_REALIZATIONS = 80
 #  1    9m55 (80 realizations)    9m46
 # 30 2h48m40 (80 realizations) 3h56m41
+## Sparse
+#      clock                 user + sys
+#  1    4m40 ( 1 realization )    5m31
+#  2    8m54 ( 1 realization )   10m42
+#  4   10m07 ( 1 realization )   13m04
+#  8   22m19 ( 1 realization )   28m37
+# 16   58m05 ( 1 realization ) 1h13
+# 30 2h43m05 ( 1 realization ) 3h07m12
+# 30 2h40m30 ( 2 realizations) 3h04m18
+# 30 3h20m57 (80 realizations) 3h42m30
 """Number of days of obs to use."""
 OBS_WINDOW = OBS_DAYS * OBS_TIMES_PER_DAY
 """Number of observation times."""
