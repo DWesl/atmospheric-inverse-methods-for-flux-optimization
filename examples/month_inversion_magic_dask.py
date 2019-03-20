@@ -716,7 +716,8 @@ reduced_influences_data = (
 ).T.reshape(aligned_influences.data.shape[0], 1, REDUCED_N_GRID_POINTS)
 
 print(datetime.datetime.now(UTC).strftime("%c"),
-      "Reduced influence function spatial resolution, reducing temporal resolution")
+      "Reduced influence function spatial resolution, "
+      "reducing temporal resolution")
 flush_output_streams()
 reduced_influences = inversion.remapper.remap_bsr_temporal(
     aligned_prior_fluxes.indexes["flux_time"],
@@ -927,7 +928,8 @@ posterior_covariance_ds = xarray.Dataset(
 
 RED_DIM_Y = pd.interval_range(
     start=INFLUENCE_FUNCTIONS_TO_USE.indexes["dim_y"][0],
-    end=INFLUENCE_FUNCTIONS_TO_USE.indexes["dim_y"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+    end=(INFLUENCE_FUNCTIONS_TO_USE.indexes["dim_y"][-1] +
+         UNCERTAINTY_FLUX_RESOLUTION),
     freq=UNCERTAINTY_FLUX_RESOLUTION,
     closed="left"
 )
@@ -945,7 +947,8 @@ posterior_covariance_ds.coords["reduced_dim_y"].attrs.update(
 
 RED_DIM_X = pd.interval_range(
     start=INFLUENCE_FUNCTIONS_TO_USE.indexes["dim_x"][0],
-    end=INFLUENCE_FUNCTIONS_TO_USE.indexes["dim_x"][-1] + UNCERTAINTY_FLUX_RESOLUTION,
+    end=(INFLUENCE_FUNCTIONS_TO_USE.indexes["dim_x"][-1] +
+         UNCERTAINTY_FLUX_RESOLUTION),
     freq=UNCERTAINTY_FLUX_RESOLUTION,
     closed="left"
 )
