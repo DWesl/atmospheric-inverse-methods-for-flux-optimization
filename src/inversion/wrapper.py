@@ -361,6 +361,8 @@ def get_installed_modules():
         python_versions = [pair[1] for pair in package_info
                            if pair[0] == "python"]
 
+        # Only return information for the currently-running version of
+        # python.
         if ((LooseVersion(python_versions[0]) ==
              LooseVersion(sys.version.split()[0]))):
             _PACKAGE_INFO = package_info

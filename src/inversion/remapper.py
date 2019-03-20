@@ -14,6 +14,7 @@ from xarray import DataArray
 
 DTYPE = np.float64
 
+
 def get_spatial_remappers(domain_size, block_side=3):
     """Get matrices to remap from original to coarser resolution.
 
