@@ -357,7 +357,6 @@ flush_output_streams()
 wrf_times = OBS_DATASET.indexes["forecast_reference_time"].round("S")
 OBS_DATASET.coords["forecast_reference_time"] = wrf_times
 
-print(OBS_DATASET.dims, OBS_DATASET.coords)
 OBS_DATASET.coords["site"] = list(
     map(lambda x: x.decode("ascii"),
         OBS_DATASET["name_of_observation_site"].values))
@@ -367,7 +366,6 @@ OBS_DATASET = (
     .rename(dict(dim1="site"))
 )
 del OBS_DATASET.coords["name_of_observation_site"]
-print(OBS_DATASET.dims, OBS_DATASET.coords)
 # Assign a few more coords and pull out only the fluxes we need.
 FLUX_DATASET = FLUX_DATASET.sel(flux_time=FLUX_TIMES_INDEX)
 N_REALIZATIONS = len(FLUX_DATASET.indexes["realization"])
@@ -406,7 +404,6 @@ WRF_OBS = OBS_DATASET.get(
 WRF_OBS_MATCHED = WRF_OBS.rename(dict(
     forecast_reference_time="observation_time"))
 WRF_OBS_SITE = WRF_OBS_MATCHED
-print(WRF_OBS_MATCHED.dims, WRF_OBS_MATCHED.coords)
 
 WRF_OBS_START = WRF_OBS_MATCHED.indexes["observation_time"][0]
 WRF_OBS_INTERVAL = (WRF_OBS_START -
@@ -612,7 +609,6 @@ reduced_temporal_correlation_ds = (
     .mean("flux_time_adjoint")
 )
 print(datetime.datetime.now(UTC).strftime("%c"), "Have temporal correlations")
-print(reduced_temporal_correlation_ds.values)
 flush_output_streams()
 
 full_correlations = kronecker_product(
