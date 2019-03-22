@@ -437,6 +437,29 @@ class TestInversionSimple(unittest2.TestCase):
                 method(background, bg_corr,
                        obs, obs_cov, obs_op)
 
+    def test_scipy_chol_fails(self):
+        """Test that trying cholesky on linear operators fails nicely."""
+        bg = np.zeros((10,), dtype=DTYPE)
+        obs = np.ones((5,), dtype=DTYPE)
+
+        bg_cov = np.eye(10, dtype=DTYPE)
+        obs_cov = inversion.linalg.DiagonalOperator(
+            np.ones((5,), dtype=DTYPE))
+
+        obs_op = np.eye(5, 10, dtype=DTYPE)
+
+        for method in ALL_METHODS:
+            name = getname(method)
+            if "chol" not in name.lower():
+                continue
+
+            with self.subTest(method=name):
+                with self.assertRaises(
+                    TypeError,
+                    msg="Observation covariance must be array"
+                ):
+                    mean, cov = method(bg, bg_cov, obs, obs_cov, obs_op)
+
 
 class TestGaussianNoise(unittest2.TestCase):
     """Test the properties of the gaussian noise."""

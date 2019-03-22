@@ -484,8 +484,7 @@ def scipy_chol(background, background_covariance,
         B_HT)
 
     if isinstance(observation_covariance, LinearOperator):
-        projected_background_covariance = tolinearoperator(
-            projected_background_covariance)
+        raise TypeError("Observation covariance must be array")
     covariance_sum = projected_background_covariance + observation_covariance
     cov_sum_chol_up = scipy.linalg.cho_factor(covariance_sum, overwrite_a=True)
     del covariance_sum
