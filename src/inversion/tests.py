@@ -426,6 +426,8 @@ class TestInversionSimple(unittest2.TestCase):
         obs = np.ones(obs_op.shape[0], dtype=DTYPE)
         obs_cov = np.eye(obs_op.shape[0])
 
+        obs_op_matrix = obs_op.toarray()
+
         for method in ALL_METHODS:
             name = getname(method)
 
@@ -434,8 +436,48 @@ class TestInversionSimple(unittest2.TestCase):
                     raise unittest2.SkipTest(
                         "Known Failure: "
                         "Cholesky factorization of linear operators")
-                method(background, bg_corr,
-                       obs, obs_cov, obs_op)
+                bsr_mean, bsr_cov = method(
+                    background, bg_corr,
+                    obs, obs_cov, obs_op)
+
+                # Test against the dense matrix
+                # There should be no changes whatsoever
+                # This includes a bunch of 0*something in a sum
+                # The one above does not.
+                expected_mean, expected_cov = method(
+                    background, bg_corr,
+                    obs, obs_cov, obs_op_matrix)
+
+                # Set a slightly higher tolerance for variational
+                # methods.  As near as I can tell, H is only used in
+                # products with explicit vectors in var methods, so
+                # the difference would be from adding a bunch of
+                # zeros.
+                if "var" in name.lower():
+                    atol = 7e-8
+
+                    self.assertIsInstance(
+                        bsr_cov,
+                        np.ndarray
+                    )
+                else:
+                    self.assertIsInstance(
+                        bsr_cov,
+                        scipy.sparse.linalg.LinearOperator
+                    )
+
+                    if "psas" in name.lower():
+                        atol = 1.7e-7
+                    else:
+                        atol = 0
+
+                np_tst.assert_allclose(bsr_mean, expected_mean,
+                                       atol=atol)
+                np_tst.assert_allclose(
+                    bsr_cov.dot(np.eye(bsr_mean.shape[0])),
+                    expected_cov,
+                    atol=atol
+                )
 
     def test_scipy_chol_fails(self):
         """Test that trying cholesky on linear operators fails nicely."""
