@@ -20,6 +20,12 @@ from numpy import zeros_like
 from inversion import ConvergenceError, MAX_ITERATIONS, GRAD_TOL
 from inversion.util import solve, method_common
 
+# Scipy optimizers to use when requesting:
+# A full covariance matrix
+FULL_COVARIANCE = "BFGS"
+# No covariance matrix at all
+NO_COVARIANCE = "Newton-CG"
+
 
 @method_common
 def simple(background, background_covariance,
@@ -160,9 +166,9 @@ def simple(background, background_covariance,
     #     return bg_prod + obs_prod
 
     if reduced_background_covariance is None:
-        method = "BFGS"
+        method = FULL_COVARIANCE
     else:
-        method = "Newton-CG"
+        method = NO_COVARIANCE
 
     result = scipy.optimize.minimize(
         cost_function, background,
@@ -323,9 +329,9 @@ def incremental(background, background_covariance,
     #     return bg_prod + obs_prod
 
     if reduced_background_covariance is None:
-        method = "BFGS"
+        method = FULL_COVARIANCE
     else:
-        method = "Newton-CG"
+        method = NO_COVARIANCE
 
     result = scipy.optimize.minimize(
         cost_function, asarray(zeros_like(background)),
@@ -497,9 +503,9 @@ def incr_chol(background, background_covariance,
     #     return bg_prod + obs_prod
 
     if reduced_background_covariance is None:
-        method = "BFGS"
+        method = FULL_COVARIANCE
     else:
-        method = "Newton-CG"
+        method = NO_COVARIANCE
 
     result = scipy.optimize.minimize(
         cost_function, asarray(zeros_like(background)),
