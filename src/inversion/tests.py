@@ -1890,6 +1890,7 @@ class TestHomogeneousInversions(unittest2.TestCase):
         self.bg_corr = (bg_corr, bg_corr.dot(np.eye(*bg_corr.shape)))
         self.obs_corr = (obs_corr, obs_corr.dot(np.eye(*obs_corr.shape)))
         self.obs_op = (inversion.linalg.tolinearoperator(obs_op.toarray()),
+                       inversion.linalg.tolinearoperator(obs_op)
                        # Dask requires subscripting; diagonal sparse
                        # matrices don't do this.
                        obs_op.toarray())
@@ -1910,6 +1911,7 @@ class TestHomogeneousInversions(unittest2.TestCase):
                         self.bg_vals, bg_corr,
                         self.obs_vals, obs_corr,
                         obs_op)
+                    post_cov.dot(np.zeros(post_cov.shape[0]))
                 with self.subTest(method=getname(inversion_method),
                                   bg_corr=getname(type(bg_corr)),
                                   obs_corr=getname(type(obs_corr)),
@@ -1919,6 +1921,7 @@ class TestHomogeneousInversions(unittest2.TestCase):
                         self.bg_vals, bg_corr,
                         self.obs_vals, obs_corr,
                         obs_op, bg_corr, obs_op)
+                    post_cov.dot(np.zeros(post_cov.shape[0]))
 
 
 class TestKroneckerQuadraticForm(unittest2.TestCase):
