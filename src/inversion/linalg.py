@@ -98,7 +98,6 @@ def solve(arr1, arr2):
         if `arr1` is not square
     """
     if arr1.shape[0] != arr2.shape[0]:
-        print(arr1.shape[1], arr2.shape[0])
         raise ValueError("Dimension mismatch")
     if arr1.shape[0] != arr1.shape[1]:
         raise LinAlgError("arr1 is not square")
@@ -121,7 +120,7 @@ def solve(arr1, arr2):
                 The solution of the linear equation
             """
             return solve(arr1, vec)
-        inverse = DaskLinearOperator(matvec=solver, shape=arr1.shape[::-1])
+        inverse = DaskLinearOperator(matvec=solver, shape=arr1.shape)
         return inverse.dot(arr2)
 
     # arr2 is an array
