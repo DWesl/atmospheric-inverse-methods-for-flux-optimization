@@ -393,7 +393,8 @@ class _DaskAdjointLinearOperator(DaskMatrixLinearOperator):
 class _DaskSumLinearOperator(_SumLinearOperator, DaskLinearOperator):
     """Sum of two DaskLinearOperators."""
 
-    pass
+    def _transpose(self):
+        return _DaskSumLinearOperator(self.args[1].T, self.args[0].T)
 
 
 class _DaskScaledLinearOperator(_ScaledLinearOperator, DaskLinearOperator):
