@@ -1890,7 +1890,7 @@ class TestHomogeneousInversions(unittest2.TestCase):
         self.bg_corr = (bg_corr, bg_corr.dot(np.eye(*bg_corr.shape)))
         self.obs_corr = (obs_corr, obs_corr.dot(np.eye(*obs_corr.shape)))
         self.obs_op = (inversion.linalg.tolinearoperator(obs_op.toarray()),
-                       inversion.linalg.tolinearoperator(obs_op)
+                       inversion.linalg.tolinearoperator(obs_op),
                        # Dask requires subscripting; diagonal sparse
                        # matrices don't do this.
                        obs_op.toarray())
