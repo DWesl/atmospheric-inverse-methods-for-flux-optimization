@@ -34,8 +34,8 @@ install:
   # Customise the testing environment
   # ---------------------------------
   - >
-    head -n 12 requirements.txt | | sed -E 's/\[.*\]//g' >test-requirements.txt
+    head -n 12 requirements.txt | sed -E 's/\[.*\]//g' >test-requirements.txt
     conda install --quiet -n $ENV_NAME --file test-requirements.txt;
     pip install .[tests]
 script:
-  - python -m inversion.test
+  - python setup.py test
