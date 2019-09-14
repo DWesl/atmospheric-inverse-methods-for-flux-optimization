@@ -14,7 +14,7 @@ from numpy.linalg import svd, LinAlgError
 # implicitly called on the operator2.dot(chunk) that usually follows
 # this.
 from numpy import einsum
-from numpy import concatenate, zeros, nonzero
+from numpy import concatenate, zeros, nonzero, prod
 from numpy import asarray, atleast_2d, stack, where, sqrt
 
 from scipy.sparse.linalg import lgmres
@@ -278,6 +278,24 @@ def matrix_sqrt(mat):
         cls=type(mat)))
 
 
+def matrix_determinant(operator):
+    """Find the determinant of the operator.
+
+    Parameters
+    ----------
+    operator: LinearOperator
+
+    Returns
+    -------
+    determinant: float
+    """
+    if hasattr(operator, "det"):
+        return operator.det()
+    if isinstance(operator, DaskMatrixLinearOperator):
+        operator = operator.A
+    return la.det(operator)
+
+
 class DaskKroneckerProductOperator(DaskLinearOperator):
     """Operator for Kronecker product.
 
@@ -490,6 +508,18 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
             result += mat[row_start:(row_start + block_size)].T.dot(
                 operator2.dot(chunk))
         return result
+
+    def det(self):
+        """Find the determinant of the operator.
+
+        Returns
+        -------
+        float
+        """
+        return (
+            matrix_determinant(self._operator1) *
+            matrix_determinant(self._operator2)
+        )
 
 
 class SchmidtKroneckerProduct(DaskLinearOperator):
@@ -705,5 +735,19 @@ class DiagonalOperator(SelfAdjointLinearOperator):
         return where(self._diag_near_zero, 0, result)
 
     def sqrt(self):
-        """Find S such that S.T @ S == self."""
+        """Find S such that S.T @ S == self.
+
+        Returns
+        -------
+        LinearOperator
+        """
         return DiagonalOperator(sqrt(self._diag))
+
+    def det(self):
+        """Find the determinant of the operator.
+
+        Returns
+        -------
+        float
+        """
+        return prod(self._diag)
