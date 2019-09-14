@@ -516,9 +516,16 @@ class DaskKroneckerProductOperator(DaskLinearOperator):
         -------
         float
         """
+        op1 = self._operator1
+        op2 = self._operator2
+        if (
+                self.shape[0] != self.shape[1] or
+                op1.shape[0] != op1.shape[1]
+        ):
+            raise ValueError("Determinant only defined for square operators.")
         return (
-            matrix_determinant(self._operator1) *
-            matrix_determinant(self._operator2)
+            matrix_determinant(op1) ** op2.shape[0] *
+            matrix_determinant(op2) ** op1.shape[0]
         )
 
 
@@ -609,6 +616,25 @@ class SchmidtKroneckerProduct(DaskLinearOperator):
             ).reshape(result_shape)
 
         return asarray(result)
+
+    def det(self):
+        """Find the determinant of the operator.
+
+        Returns
+        -------
+        float
+        """
+        op1 = self._operator1
+        op2 = self._operator2
+        if (
+                self.shape[0] != self.shape[1] or
+                op1.shape[0] != op1.shape[1]
+        ):
+            raise ValueError("Determinant only defined for square operators.")
+        return (
+            matrix_determinant(op1) ** op2.shape[0] *
+            matrix_determinant(op2) ** op1.shape[0]
+        )
 
 
 class SelfAdjointLinearOperator(DaskLinearOperator):
