@@ -3177,8 +3177,8 @@ class TestDeterminants(unittest2.TestCase):
                 )
                 self.assertEqual(op.det(), np.prod(test_case))
 
-    def test_kronecker_determinant(self):
-        """Test determinants of Kronecker products."""
+    def test_kronecker_determinant_simple(self):
+        """Test determinants of Kronecker products of simple inputs."""
 
         kron_classes = (
             atmos_flux_inversion.linalg.DaskKroneckerProductOperator,
@@ -3201,6 +3201,34 @@ class TestDeterminants(unittest2.TestCase):
                     kron_op = kron_class(left, right)
                     result = kron_op.det()
                     self.assertEqual(result, 1)
+
+    def test_kronecker_determinant_hard(self):
+        """Test determinants of KroneckerProducts of other inputs."""
+        kron_classes = (
+            atmos_flux_inversion.linalg.DaskKroneckerProductOperator,
+            atmos_flux_inversion.correlations.SchmidtKroneckerProduct,
+        )
+        test_mats = (
+            np.eye(3),
+            np.eye(10, dtype=DTYPE),
+            np.arange(4).reshape(2, 2),
+            np.random.rand(4, 4),
+            np.random.rand(5, 5),
+        )
+
+        for kron_class in kron_classes:
+            for left, right in itertools.product(
+                    test_mats,
+                    test_mats
+            ):
+                with self.subTest(
+                        kron_class=kron_class,
+                        left=left, right=right
+                ):
+                    kron_op = kron_class(left, right)
+                    result = kron_op.det()
+                    expected = la.det(np.kron(left, right))
+                    self.assertAlmostEqual(result, expected)
 
 
 if __name__ == "__main__":
