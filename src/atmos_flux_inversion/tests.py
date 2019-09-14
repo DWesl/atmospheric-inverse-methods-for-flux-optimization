@@ -3162,6 +3162,25 @@ class TestDeterminants(unittest2.TestCase):
             np.eye(3),
             np.eye(10, dtype=DTYPE),
             atmos_flux_inversion.linalg.DiagonalOperator(np.ones(10)),
+            atmos_flux_inversion.correlations.
+            HomogeneousIsotropicCorrelation.from_array([1, 0, 0, 0, 0]),
+            atmos_flux_inversion.correlations.
+            HomogeneousIsotropicCorrelation.from_array([1, 0, 0, 0, 0], False),
+            atmos_flux_inversion.correlations.
+            HomogeneousIsotropicCorrelation.from_array(
+                [[1, 0, 0, 0, 0],
+                 [0, 0, 0, 0, 0],
+                 [0, 0, 0, 0, 0],
+                 [0, 0, 0, 0, 0]]
+            ),
+            atmos_flux_inversion.correlations.
+            HomogeneousIsotropicCorrelation.from_array(
+                [[1, 0, 0, 0, 0],
+                 [0, 0, 0, 0, 0],
+                 [0, 0, 0, 0, 0],
+                 [0, 0, 0, 0, 0]],
+                False
+            ),
         ]
 
         for test_op in test_ops:
@@ -3239,6 +3258,29 @@ class TestDeterminants(unittest2.TestCase):
                     result = kron_op.det()
                     expected = la.det(np.kron(left, right))
                     self.assertAlmostEqual(result, expected)
+
+    def test_fourier_determinants(self):
+        """Test determinants of HomogeneousIsotropicCorrelation."""
+        from_function = (atmos_flux_inversion.correlations.
+                         HomogeneousIsotropicCorrelation.from_function)
+        test_dists = (.3, 1, 3,)
+        test_shapes = (10, 15, (4, 5))
+
+        for test_dist, corr_class, shape, is_cyclic in itertools.product(
+                test_dists,
+                atmos_flux_inversion.correlations.
+                DistanceCorrelationFunction.__subclasses__(),
+                test_shapes,
+                (True, False)
+        ):
+            with self.subTest(test_dist=test_dist,
+                              corr_class=corr_class.__name__,
+                              shape=shape,
+                              is_cyclic=is_cyclic):
+                op = from_function(corr_class(test_dist), shape, is_cyclic)
+                mat = op.dot(np.eye(*op.shape))
+
+                self.assertAlmostEqual(op.det(), la.det(mat), 4)
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ from numpy import arange, newaxis, asanyarray
 from numpy import fromfunction, asarray, hstack, flip
 from numpy import exp, square, fmin, sqrt
 from numpy import logical_or, concatenate, isnan
-from numpy import where
+from numpy import where, prod
 from numpy import sum as array_sum
 from scipy.special import gamma, kv as K_nu
 from scipy.sparse.linalg.interface import LinearOperator
@@ -442,6 +442,21 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
             expanded_near_zero[self_index],
             other._fourier_near_zero[other_index])
         return newinst
+
+    def det(self):
+        """Find the determinant of the operator.
+
+        Returns
+        -------
+        float
+        """
+        if self._is_cyclic:
+            return prod(self._corr_fourier.real)
+        index = tuple(
+            slice(1, None, 2)
+            for _ in self._underlying_shape
+        )
+        return prod(self._corr_fourier[index].real)
 
 
 def make_matrix(corr_func, shape):
