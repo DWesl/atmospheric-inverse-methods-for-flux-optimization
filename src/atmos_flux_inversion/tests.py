@@ -3142,5 +3142,66 @@ class TestObservationCovariance(unittest2.TestCase):
         np_tst.assert_allclose(corr_matrix, np.diag(series.values))
 
 
+class TestDeterminants(unittest2.TestCase):
+    """Test the determinant-finding abilities of operators."""
+
+    def test_matrix_determinant(self):
+        """Test the matrix_determinant function."""
+
+        test_ops = [
+            np.eye(3),
+            np.eye(10, dtype=DTYPE),
+            atmos_flux_inversion.linalg.DiagonalOperator(np.ones(10)),
+        ]
+
+        for test_op in test_ops:
+            with self.subTest(test_op=test_op):
+                result = atmos_flux_inversion.linalg.matrix_determinant(
+                    test_op
+                )
+                self.assertIsInstance(result, float)
+                self.assertEqual(result, 1.0)
+
+    def test_diagonal_determinant(self):
+        """Test determinants of DiagonalOperators."""
+        test_cases = (
+            np.arange(10),
+            np.arange(1, 10),
+            np.ones(15),
+        )
+
+        for test_case in test_cases:
+            with self.subTest(test_case=test_case):
+                op = atmos_flux_inversion.linalg.DiagonalOperator(
+                    test_case
+                )
+                self.assertEqual(op.det(), np.prod(test_case))
+
+    def test_kronecker_determinant(self):
+        """Test determinants of Kronecker products."""
+
+        kron_classes = (
+            atmos_flux_inversion.linalg.DaskKroneckerProductOperator,
+            atmos_flux_inversion.correlations.SchmidtKroneckerProduct,
+        )
+        test_mats = (np.eye(3), np.eye(10, dtype=DTYPE))
+        test_ops = (
+            atmos_flux_inversion.linalg.DiagonalOperator(np.ones(10)),
+        )
+
+        for kron_class in kron_classes:
+            for left, right in itertools.product(
+                    test_mats,
+                    test_mats + test_ops
+            ):
+                with self.subTest(
+                        kron_class=kron_class,
+                        left=left, right=right
+                ):
+                    kron_op = kron_class(left, right)
+                    result = kron_op.det()
+                    self.assertEqual(result, 1)
+
+
 if __name__ == "__main__":
     unittest2.main()
