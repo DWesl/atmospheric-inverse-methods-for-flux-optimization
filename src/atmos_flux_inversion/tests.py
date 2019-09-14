@@ -1201,6 +1201,16 @@ class TestCorrelations(unittest2.TestCase):
         np_tst.assert_allclose(op.dot(np.eye(*mat.shape)),
                                mat)
 
+    def test_acyclic_from_array2d(self):
+        """Test from_array with correlations assumed acyclic."""
+        array = [[1, .5, .25, .125, .0625, .03125],
+                 [.5, .25, .125, .0625, .03125, .015625]]
+        # At one point this operation crashed, so this is an
+        # "assertDoesNotRaise"
+        (atmos_flux_inversion.correlations.
+         HomogeneousIsotropicCorrelation.
+         from_array(array, False))
+
 
 class TestSchmidtKroneckerProduct(unittest2.TestCase):
     """Test the Schmidt Kronecker product implementation for LinearOperators.
