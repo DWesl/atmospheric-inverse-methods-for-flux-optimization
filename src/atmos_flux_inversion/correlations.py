@@ -284,8 +284,12 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
             self = cls(shape, computational_shape)
 
             for axis in reversed(range(ndims)):
+                sub_index = [
+                    slice(None) for i in range(ndims)
+                ]
+                sub_index[axis] = slice(1, -1)
                 corr_array = concatenate(
-                    [corr_array, flip(corr_array[1:-1], axis)],
+                    [corr_array, flip(corr_array[tuple(sub_index)], axis)],
                     axis=axis)
 
             # Advantages over dctn: guaranteed same format and gets
