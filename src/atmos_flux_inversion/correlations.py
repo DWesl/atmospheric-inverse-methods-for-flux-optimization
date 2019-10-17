@@ -21,6 +21,7 @@ from numpy import where, prod
 from numpy import sum as array_sum
 from scipy.special import gamma, kv as K_nu
 from scipy.sparse.linalg.interface import LinearOperator
+from scipy.fftpack import dctn, fftn
 
 import pyfftw.interfaces.cache
 from pyfftw import next_fast_len
@@ -450,13 +451,14 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
         -------
         float
         """
+        correlations = self._ifft(self._corr_fourier)
         if self._is_cyclic:
-            return prod(self._corr_fourier.real)
-        index = tuple(
-            slice(1, None, 2)
-            for _ in self._underlying_shape
-        )
-        return prod(self._corr_fourier[index].real)
+            spectrum = fftn(correlations, shape=self._underlying_shape).real
+            # The order is different from la.eigvalsh, but that
+            # doesn't matter
+            return prod(spectrum)
+        spectrum = dctn(correlations, type=1, shape=self._underlying_shape)
+        return prod(spectrum)
 
 
 def make_matrix(corr_func, shape):
