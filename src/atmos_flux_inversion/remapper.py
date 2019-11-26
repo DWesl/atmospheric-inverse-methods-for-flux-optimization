@@ -8,6 +8,7 @@ from math import ceil
 
 import numpy as np
 from numpy import zeros, newaxis
+from numpy.linalg import inv
 
 DTYPE = np.float64
 
@@ -51,3 +52,44 @@ def get_remappers(domain_size, block_side=3):
     intensive_remapper /= n_nz[:, :, newaxis, newaxis]
 
     return extensive_remapper, intensive_remapper
+
+
+def get_optimal_prolongation(reduction, covariance):
+    """Find the optimal prolongation for the given reduction.
+
+    The optimal prolongation operator depends on both the reduction
+    operator used and the covariance function assumed:
+
+    .. math:: pro = cov @ red^T @ (red @ cov @ red^T)^{-1}
+
+    This prolongation minimizes the aggregation error for the
+    inversion with the given reduction.
+
+    Parameters
+    ----------
+    reduction: array_like
+    covariance: LinearOperator
+
+    Returns
+    -------
+    prolongation: array_like
+
+    Notes
+    -----
+    The transpose of the `extensive` remapper from
+    :func:`get_remappers` will function as a prolongation operator and
+    corresponds to `covariance` being a multiple of the identity
+    matrix.
+
+    References
+    ----------
+    Bousserez, N. and D. Henze "Optimal and scalable methods to
+    approximate the solutions of large-scale Bayesian problems: theory
+    and application to atmospheric inversions and data assimilation"
+    *Quarterly Journal of the Royal Meteorological Society*
+    2018. Vol. 144, pp. 365--390. :doi:`10.1002/qj.3209`
+    """
+    cov_dot_red_T = covariance.dot(reduction.T)
+    return cov_dot_red_T.dot(
+        inv(reduction.dot(cov_dot_red_T))
+    )

@@ -3087,6 +3087,104 @@ class TestRemapper(unittest2.TestCase):
                 np_tst.assert_allclose(proj_op.dot(proj_op), proj_op)
 
 
+class TestOptimalProlongation(unittest2.TestCase):
+    """Test properties of the optimal prolongation."""
+
+    def test_opt_matrix_properties(self):
+        """Test matrix properties of the optimal prolongation operator."""
+        remapper = atmos_flux_inversion.remapper
+        get_remappers = remapper.get_remappers
+        get_optimal_prolongation = remapper.get_optimal_prolongation
+        from_function = (atmos_flux_inversion.correlations.
+                         HomogeneousIsotropicCorrelation.from_function)
+        ExpCorr = (atmos_flux_inversion.correlations.
+                   ExponentialCorrelation)
+        test_sides = range(5, 8)
+        coarsen_to = range(3, 5)
+        cov_funs = (
+            lambda n1, n2: scipy.linalg.toeplitz(0.5 ** np.arange(n1 * n2)),
+            lambda n1, n2: from_function(ExpCorr(2), (n1, n2)),
+        )
+
+        for side1, side2, coarsening, cov_fun in itertools.product(
+                test_sides, test_sides, coarsen_to, cov_funs
+        ):
+            with self.subTest(side1=side1, side2=side2, coarsening=coarsening,
+                              cov_fun=cov_fun):
+                extensive, intensive = get_remappers((side1, side2),
+                                                     coarsening)
+                extensive = extensive.reshape(np.prod(extensive.shape[:2]),
+                                              np.prod(extensive.shape[2:]))
+                intensive = intensive.reshape(np.prod(intensive.shape[:2]),
+                                              np.prod(intensive.shape[2:]))
+
+                cov = cov_fun(side1, side2)
+                optimal = get_optimal_prolongation(intensive, cov)
+
+                np_tst.assert_allclose(intensive.dot(optimal),
+                                       np.eye(intensive.shape[0]),
+                                       # rtol=1e-4, atol=1e-6)
+                                       rtol=1e-7, atol=1e-15)
+
+                proj_op = extensive.T.dot(intensive)
+                opt_proj_op = optimal.dot(intensive)
+                np_tst.assert_allclose(
+                    opt_proj_op.dot(opt_proj_op),
+                    opt_proj_op,
+                    # rtol=1e-4, atol=1e-6
+                    rtol=1e-7, atol=1e-15
+                )
+
+                n_obs = 4
+                obs_op = np.eye(n_obs, intensive.shape[1])
+
+                cov_red = intensive.dot(cov.dot(intensive.T))
+                obs_cov = np.eye(n_obs)
+
+                # Using default prolongation
+                cov_proj_T = cov.dot(proj_op.T)
+                agg_err_base = obs_op.dot((
+                    cov + proj_op.dot(cov.dot(proj_op.T))
+                    # \Pi B = (B^T \Pi^T)^T = (B \Pi^T)^T
+                    - cov_proj_T.T - cov_proj_T
+                ).dot(obs_op.T))
+
+                # Using optimal prolongation
+                obs_op_opt = obs_op.dot(optimal)
+                bht_red_opt = cov_red.dot(obs_op_opt.T)
+                cov_opt_proj_T = cov.dot(opt_proj_op.T)
+                agg_err_opt = obs_op.dot((
+                    cov + opt_proj_op.dot(cov.dot(opt_proj_op.T))
+                    # \Pi B = (B^T \Pi^T)^T = (B \Pi^T)^T
+                    - cov_opt_proj_T.T - cov_opt_proj_T
+                ).dot(obs_op.T))
+                avg_opt = bht_red_opt.dot(
+                    la.solve(
+                        obs_op_opt.dot(bht_red_opt) + agg_err_opt + obs_cov,
+                        obs_op_opt
+                    )
+                )
+
+                # Assert aggregation error using optimal prolongation
+                # operator is not greater than that using naive
+                # prolongation operator.
+                self.assertLessEqual(la.norm(agg_err_opt),
+                                     la.norm(agg_err_base))
+
+                # Assert optimal aggregation error is difference
+                # between unprojected and projected covariance
+                np_tst.assert_allclose(
+                    agg_err_opt,
+                    obs_op.dot(cov.dot(obs_op.T)) -
+                    obs_op.dot(
+                        opt_proj_op.dot(cov.dot(opt_proj_op.T))
+                        .dot(obs_op.T))
+                )
+
+                # Assert posterior covariance is positive definite
+                cholesky(cov_red - avg_opt.dot(cov_red))
+
+
 class TestObservationCovariance(unittest2.TestCase):
     """Test the generation of observation covariances."""
 
