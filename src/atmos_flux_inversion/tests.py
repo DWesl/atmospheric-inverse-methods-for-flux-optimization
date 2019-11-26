@@ -3057,6 +3057,35 @@ class TestRemapper(unittest2.TestCase):
              [29, 32, 34],
              [43, 46, 48]])
 
+    def test_matrix_properties(self):
+        """Test needed properties.
+
+        extensive.T functions as a prolongation operator.
+        Prolonging then reducing some data should be an identity.
+
+        extensive.T @ intensive projects data into the seen subspace.
+        This operation should be idempotent (follows from inverse).
+        """
+        get_remappers = atmos_flux_inversion.remapper.get_remappers
+        test_sides = range(3, 10)
+        coarsen_to = range(2, 5)
+        for side1, side2, coarsening in itertools.product(
+                test_sides, test_sides, coarsen_to
+        ):
+            with self.subTest(side1=side1, side2=side2, coarsening=coarsening):
+                extensive, intensive = get_remappers((side1, side2),
+                                                     coarsening)
+                extensive = extensive.reshape(np.prod(extensive.shape[:2]),
+                                              np.prod(extensive.shape[2:]))
+                intensive = intensive.reshape(np.prod(intensive.shape[:2]),
+                                              np.prod(intensive.shape[2:]))
+
+                np_tst.assert_allclose(intensive.dot(extensive.T),
+                                       np.eye(intensive.shape[0]))
+
+                proj_op = extensive.T.dot(intensive)
+                np_tst.assert_allclose(proj_op.dot(proj_op), proj_op)
+
 
 class TestObservationCovariance(unittest2.TestCase):
     """Test the generation of observation covariances."""
