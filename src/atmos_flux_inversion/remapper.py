@@ -93,3 +93,41 @@ def get_optimal_prolongation(reduction, covariance):
     return cov_dot_red_T.dot(
         inv(reduction.dot(cov_dot_red_T))
     )
+
+
+def get_temporal_remappers(old_index, n_intervals, interval_type="week"):
+    """Get temporal remappers.
+
+    Tries to emulate :func:`pandas.resample`.
+
+    Parameters
+    ----------
+    old_index: pd.DatetimeIndex
+    n_intervals: int
+    interval_type: {'week', 'day'}
+
+    Returns
+    -------
+    prolongation, reduction: np.ndarray[new, old]
+    """
+    if interval_type == "day":
+        day = old_index.dayofyear
+        key = old_index.year * 1000 + (day - day[0]) // n_intervals
+    elif interval_type == "week":
+        week = old_index.week.values
+        week[week == 53] = 0
+        key = old_index.year * 1000 + np.ceil((week - week[0]) / n_intervals)
+    else:
+        raise ValueError("interval_type must be 'weeks' or 'days'")
+
+    vals, starts, counts = np.unique(key, return_index=True,
+                                     return_counts=True)
+    out_dim = len(vals)
+    prolongation = np.zeros((out_dim, len(old_index)), dtype=DTYPE)
+    reduction = np.zeros((out_dim, len(old_index)), dtype=DTYPE)
+
+    for i, (start, count) in enumerate(zip(starts, counts)):
+        prolongation[i, start:start + count] = 1
+        reduction[i, start:start + count] = 1. / count
+
+    return prolongation.T, reduction

@@ -3087,6 +3087,110 @@ class TestRemapper(unittest2.TestCase):
                 np_tst.assert_allclose(proj_op.dot(proj_op), proj_op)
 
 
+class TestTemporalRemapper(unittest2.TestCase):
+    """Test properties of the temporal remappers."""
+
+    def test_matrix_properties(self):
+        """Test temporal remapping matrix properties."""
+        get_temporal_remappers = (atmos_flux_inversion.remapper
+                                  .get_temporal_remappers)
+        base_index = pd.date_range("2010-01-01T00:00",
+                                   "2010-02-01T00:00",
+                                   freq="1D")
+
+        for n_int, base_unit in itertools.product(
+            range(1, 5), ("day", "week")
+        ):
+            with self.subTest(n_int=n_int, base_unit=base_unit):
+                prolongation, reduction = get_temporal_remappers(
+                    base_index, n_int, base_unit
+                )
+                self.assertLessEqual(*reduction.shape)
+                self.assertGreaterEqual(*prolongation.shape)
+
+                np_tst.assert_allclose(reduction.dot(prolongation),
+                                       np.eye(reduction.shape[0]))
+                proj_op = prolongation.dot(reduction)
+                np_tst.assert_allclose(proj_op.dot(proj_op),
+                                       proj_op)
+
+    def test_identity(self):
+        """Test temporal remapping handles null case."""
+        get_temporal_remappers = (atmos_flux_inversion.remapper
+                                  .get_temporal_remappers)
+
+        for n_int, base_unit in itertools.product(
+            range(1, 5), ("day", "week")
+        ):
+            with self.subTest(n_int=n_int, base_unit=base_unit):
+                freq = "{n:d}{f:s}".format(
+                    n=n_int, f=base_unit[0].upper()
+                )
+                base_index = pd.date_range("2010-01-01T00:00",
+                                           "2010-02-01T00:00",
+                                           freq=freq)
+
+                prolongation, reduction = get_temporal_remappers(
+                    base_index, n_int, base_unit
+                )
+
+                self.assertEqual(reduction.shape[0], len(base_index))
+                self.assertEqual(reduction.shape[1], len(base_index))
+                np_tst.assert_allclose(reduction, np.eye(len(base_index)))
+                np_tst.assert_allclose(prolongation, np.eye(len(base_index)))
+
+    def test_values(self):
+        """Test temporal remapping gives same answers as resample."""
+        get_temporal_remappers = (atmos_flux_inversion.remapper
+                                  .get_temporal_remappers)
+
+        base_index = pd.date_range("2010-01-01T00:00",
+                                   "2010-02-01T00:00",
+                                   freq="6H")
+
+        for n_int, base_unit, offset in itertools.product(
+            range(1, 5), ("day", "week"), range(4)
+        ):
+            with self.subTest(n_int=n_int, base_unit=base_unit, offset=offset):
+                freq = "{n:d}{f:s}".format(
+                    n=n_int, f=base_unit[0].upper()
+                )
+                index = base_index + pd.Timedelta(hours=6 * offset)
+                data = pd.DataFrame(
+                    data=range(len(base_index)),
+                    index=index
+                )
+
+                prolongation, reduction = get_temporal_remappers(
+                    index, n_int, base_unit
+                )
+                np_tst.assert_allclose(
+                    reduction.dot(data.values),
+                    data.resample(freq).mean()
+                )
+                np_tst.assert_allclose(
+                    prolongation.T.dot(data.values),
+                    data.resample(freq).sum()
+                )
+
+    def test_fails_bad_unit(self):
+        """Test temporal remapping fails on unrecognized intervals."""
+        get_temporal_remappers = (atmos_flux_inversion.remapper
+                                  .get_temporal_remappers)
+
+        base_index = pd.date_range("2010-01-01T00:00",
+                                   "2010-02-01T00:00",
+                                   freq="1D")
+        for n_int, base_unit in itertools.product(
+            range(1, 5), ("hour", "month", "year")
+        ):
+            with self.subTest(n_int=n_int, base_unit=base_unit):
+                with self.assertRaises(ValueError):
+                    prolongation, reduction = get_temporal_remappers(
+                        base_index, n_int, base_unit
+                    )
+
+
 class TestOptimalProlongation(unittest2.TestCase):
     """Test properties of the optimal prolongation."""
 
