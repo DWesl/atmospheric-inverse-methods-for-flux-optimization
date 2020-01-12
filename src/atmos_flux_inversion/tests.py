@@ -3157,7 +3157,6 @@ class TestDeterminants(unittest2.TestCase):
 
     def test_matrix_determinant(self):
         """Test the matrix_determinant function."""
-
         test_ops = [
             np.eye(3),
             np.eye(10, dtype=DTYPE),
@@ -3208,7 +3207,6 @@ class TestDeterminants(unittest2.TestCase):
 
     def test_kronecker_determinant_simple(self):
         """Test determinants of Kronecker products of simple inputs."""
-
         kron_classes = (
             atmos_flux_inversion.linalg.DaskKroneckerProductOperator,
             atmos_flux_inversion.correlations.SchmidtKroneckerProduct,
@@ -3259,25 +3257,46 @@ class TestDeterminants(unittest2.TestCase):
                     expected = la.det(np.kron(left, right))
                     self.assertAlmostEqual(result, expected)
 
-    def test_fourier_determinants(self):
-        """Test determinants of HomogeneousIsotropicCorrelation."""
+    def test_cyclic_fourier_determinants(self):
+        """Test determinants of periodic HomogeneousIsotropicCorrelation."""
         from_function = (atmos_flux_inversion.correlations.
                          HomogeneousIsotropicCorrelation.from_function)
         test_dists = (.3, 1, 3,)
         test_shapes = (10, 15, (4, 5))
 
-        for test_dist, corr_class, shape, is_cyclic in itertools.product(
+        for test_dist, corr_class, shape in itertools.product(
                 test_dists,
                 atmos_flux_inversion.correlations.
                 DistanceCorrelationFunction.__subclasses__(),
-                test_shapes,
-                (True, False)
+                test_shapes
         ):
             with self.subTest(test_dist=test_dist,
                               corr_class=corr_class.__name__,
-                              shape=shape,
-                              is_cyclic=is_cyclic):
-                op = from_function(corr_class(test_dist), shape, is_cyclic)
+                              shape=shape):
+                op = from_function(corr_class(test_dist), shape,
+                                   is_cyclic=True)
+                mat = op.dot(np.eye(*op.shape))
+
+                self.assertAlmostEqual(op.det(), la.det(mat), 6)
+
+    def test_acyclic_fourier_determinants(self):
+        """Test determinants of aperiodic HomogeneousIsotropicCorrelation."""
+        from_function = (atmos_flux_inversion.correlations.
+                         HomogeneousIsotropicCorrelation.from_function)
+        test_dists = (.3, 1, 3,)
+        test_shapes = (10, 15, (4, 5))
+
+        for test_dist, corr_class, shape in itertools.product(
+                test_dists,
+                atmos_flux_inversion.correlations.
+                DistanceCorrelationFunction.__subclasses__(),
+                test_shapes
+        ):
+            with self.subTest(test_dist=test_dist,
+                              corr_class=corr_class.__name__,
+                              shape=shape):
+                op = from_function(corr_class(test_dist), shape,
+                                   is_cyclic=False)
                 mat = op.dot(np.eye(*op.shape))
 
                 self.assertAlmostEqual(op.det(), la.det(mat), 4)
