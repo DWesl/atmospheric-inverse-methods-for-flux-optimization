@@ -34,6 +34,7 @@ import atmos_flux_inversion.optimal_interpolation
 import atmos_flux_inversion.variational
 import atmos_flux_inversion.correlations
 import atmos_flux_inversion.covariances
+import atmos_flux_inversion.remapper
 from atmos_flux_inversion.util import kronecker_product
 from atmos_flux_inversion.linalg import asarray, kron
 from atmos_flux_inversion.noise import gaussian_noise
@@ -563,15 +564,6 @@ spatial_correlations = (
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
          len(TRUE_FLUXES_MATCHED.coords["dim_x"])),
         is_cyclic=False))
-# spatial_correlation_remapper = np.full(
-#     # Grid points at full resolution, grid points at reduced resolution
-#     (spatial_correlations.shape[0], 1),
-#     # 1/Number of gridpoints combined in above mapping
-#     1. / spatial_correlations.shape[0])
-# # reduced_spatial_correlations = (
-# #     spatial_correlation_remapper.dot(
-# #         spatial_correlations.dot(spatial_correlation_remapper)))
-import atmos_flux_inversion.remapper
 spatial_obs_op_remapper, spatial_correlation_remapper = (
     atmos_flux_inversion.remapper.get_remappers(
         (len(TRUE_FLUXES_MATCHED.coords["dim_y"]),
@@ -696,6 +688,41 @@ write_progress_message("Have spatial covariances")
 print(reduced_spatial_covariance)
 flush_output_streams()
 
+write_progress_message("Getting optimal prolongation operators: "
+                       "Assumes separability")
+NUMERICAL_STABILIZER = 1e-5
+spatial_obs_op_remapper_opt = (
+    atmos_flux_inversion.remapper.get_optimal_prolongation(
+        spatial_correlation_remapper.reshape(
+            REDUCED_N_GRID_POINTS, N_GRID_POINTS
+        ),
+        # Using just the spatial covariance produces a singular matrix, so
+        # add the unscaled correlations to allow the matrix to be inverted
+        # This is probably due to the inclusion of the oceans in the
+        # domain, which have variances of zero for fluxes originating from
+        # the terrestrial biosphere.
+        spatial_covariance + NUMERICAL_STABILIZER * spatial_correlations,
+    )
+)
+write_progress_message("Got optimal spatial prolongation operator")
+if UNCERTAINTY_TEMPORAL_RESOLUTION.endswith("D"):
+    interval_type = "day"
+elif UNCERTAINTY_TEMPORAL_RESOLUTION.endswith("W"):
+    interval_type = "week"
+temporal_prolong, temporal_reduce = (
+    atmos_flux_inversion.remapper.get_temporal_remappers(
+        aligned_influences.indexes["flux_time"],
+        int(UNCERTAINTY_TEMPORAL_RESOLUTION[:-1]),
+        interval_type
+    )
+)
+write_progress_message("Got temporal prolongation operator")
+temporal_prolong_opt = atmos_flux_inversion.remapper.get_optimal_prolongation(
+    temporal_reduce, temporal_correlations
+)
+write_progress_message("Got optimal temporal prolongation operator")
+
+
 ######################################################################
 # Get an observation operator for the month
 #
@@ -707,39 +734,41 @@ flush_output_streams()
 #     "spatial_obs_op_remapper_ds",
 # )
 
-reduced_influences = (
-    aligned_influences
-    .groupby_bins(
-        "dim_x",
-        pd.interval_range(
+reduced_influences_array = np.einsum(
+    "ijkl,klmn,jh->ihmn",
+    aligned_influences.values,
+    spatial_obs_op_remapper_opt.reshape(
+        NY, NX, REDUCED_NY, REDUCED_NX,
+    ),
+    temporal_prolong_opt
+)
+reduced_influences = xarray.DataArray(
+    data=reduced_influences_array,
+    dims=("observation", "reduced_flux_time",
+          "reduced_dim_y", "reduced_dim_x"),
+    coords=dict(
+        observation=aligned_influences.coords["observation"],
+        reduced_flux_time=(
+            reduced_temporal_correlation_ds.coords["flux_time"].rename(
+                flux_time="reduced_flux_time"
+            )
+        ),
+        reduced_dim_y=pd.interval_range(
+            0.,
+            (aligned_influences.indexes["dim_y"][-1] +
+             UNCERTAINTY_FLUX_RESOLUTION),
+            freq=UNCERTAINTY_FLUX_RESOLUTION, closed="left"
+        ),
+        reduced_dim_x=pd.interval_range(
             0.,
             (aligned_influences.indexes["dim_x"][-1] +
              UNCERTAINTY_FLUX_RESOLUTION),
             freq=UNCERTAINTY_FLUX_RESOLUTION,
-            closed="left")
-        # np.arange(
-        #     -1,
-        #     (aligned_influences.indexes["dim_x"][-1] +
-        #      UNCERTAINTY_FLUX_RESOLUTION),
-        #     UNCERTAINTY_FLUX_RESOLUTION),
-    ).sum("dim_x")
-    .groupby_bins(
-        "dim_y",
-        pd.interval_range(
-            0,
-            (aligned_influences.indexes["dim_y"][-1] +
-             UNCERTAINTY_FLUX_RESOLUTION),
-            freq=UNCERTAINTY_FLUX_RESOLUTION, closed="left")
-        # np.arange(
-        #     -1,
-        #      (aligned_influences.indexes["dim_y"][-1] +
-        #       UNCERTAINTY_FLUX_RESOLUTION),
-        #      UNCERTAINTY_FLUX_RESOLUTION),
-    ).sum("dim_y")
-    .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).sum("flux_time")
-).rename(dim_x_bins="reduced_dim_x", dim_y_bins="reduced_dim_y",
-         flux_time="reduced_flux_time")
-reduced_influences.load()
+            closed="left"
+        ),
+        wrf_proj=aligned_influences.coords["wrf_proj"],
+    )
+)
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have influence for monthly average plots")
 flush_output_streams()
