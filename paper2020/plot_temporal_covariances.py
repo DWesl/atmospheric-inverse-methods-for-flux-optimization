@@ -1,3 +1,8 @@
+"""Plot the temporal correlations given configuration.
+
+Produces plots of temporal correlations given configuration from
+run_inversion_osse.py
+"""
 from __future__ import print_function, division, unicode_literals
 
 import itertools
@@ -292,8 +297,8 @@ plt.plot(array.coords["time_in_days2"], array.isel(time1=0))
 plt.xlim(0, 30)
 plt.ylim(0, 1)
 plt.ylabel("Correlation")
-plt.xlabel("Days since start")
-plt.suptitle("Correlations of each time with first")
+plt.xlabel("Time difference in days")
+plt.suptitle("Temporal correlation function")
 plt.tight_layout()
 plt.subplots_adjust(top=.9)
 fig.savefig("temporal_correlation_function_exp{day_corr:d}days_exp3hours.pdf"
