@@ -359,7 +359,7 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
     """
     observation_time_index = pd.date_range(
         start=datetime.datetime(year, month, 1, 0, 0, 0),
-        end=datetime.datetime(year, month + 1, 0, 0, 0),
+        end=datetime.datetime(year, month + 1, 1, 0, 0),
         # The one place where OBS_WINDOW/OBSERVATION_WINDOW is
         # relevant here
         freq="1H",
