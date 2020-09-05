@@ -195,6 +195,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
             .isel(observation_time=i)
             .set_index(time_before_observation="flux_time")
             .rename({"time_before_observation": "flux_time"})
+            .astype(np.float32)
             for i in range(len(obs_time_index))
         ],
         dim="observation_time",
