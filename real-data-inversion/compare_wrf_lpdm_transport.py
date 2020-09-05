@@ -483,21 +483,6 @@ if __name__ == "__main__":
     fig = compare_wrf_lpdm_mole_fractions_for_month(
         wrf_mole_fractions, lpdm_mole_fractions, args.year, args.month
     )
-    save_sparse_influences(
-        lpdm_footprint,
-        os.path.join(
-            args.output_dir,
-            (
-                "LPDM_{year:04d}_{month:02d}_{flux_interval:02d}hrly_{res:03d}km"
-                "_flux_time_aligned_sparse_molar_footprints.nc4"
-            ).format(
-                year=args.year,
-                month=args.month,
-                flux_interval=FLUX_INTERVAL,
-                res=FLUX_RESOLUTION,
-            ),
-        ),
-    )
     save_nonsparse_netcdf(
         lpdm_footprint,
         os.path.join(
@@ -550,6 +535,21 @@ if __name__ == "__main__":
             (
                 "LPDM_mole_fractions_{year:04d}_{month:02d}_"
                 "{flux_interval:02d}hrly_{res:03d}km.nc4"
+            ).format(
+                year=args.year,
+                month=args.month,
+                flux_interval=FLUX_INTERVAL,
+                res=FLUX_RESOLUTION,
+            ),
+        ),
+    )
+    save_sparse_influences(
+        lpdm_footprint,
+        os.path.join(
+            args.output_dir,
+            (
+                "LPDM_{year:04d}_{month:02d}_{flux_interval:02d}hrly_{res:03d}km"
+                "_flux_time_aligned_sparse_molar_footprints.nc4"
             ).format(
                 year=args.year,
                 month=args.month,
