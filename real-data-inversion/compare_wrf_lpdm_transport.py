@@ -337,7 +337,7 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
     flux_dataset.attrs[
         "history"
     ] = "{0:s}: WRF fluxes combined into single file\n{1:s}".format(
-        datetime.datetime.utcnow().isoformat(), flux_datasets[0].attrs["history"],
+        datetime.datetime.utcnow().isoformat(), flux_datasets[0].attrs.get("history", ""),
     )
     flux_dataset.attrs["file_list"] = " ".join(wrf_output_files)
     return flux_dataset
