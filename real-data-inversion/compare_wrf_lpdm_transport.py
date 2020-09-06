@@ -163,18 +163,20 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     for name in influence_files:
         _LOGGER.debug("Reading influences from file %s", name)
         influence_datasets.append(
-            xarray.open_dataset(name, chunks={"observation_time": 1, "site": 1})
-            .set_index(site="site_names")
+            xarray.open_dataset(
+                name, chunks={"observation_time": 1, "site": 1}
+            ).set_index(site="site_names")
             # .rename(site="site_names")
         )
         _LOGGER.debug("Done reading file %s", name)
+        break
     _LOGGER.debug("Concatenating influence functions into single dataset")
     influence_dataset = xarray.concat(influence_datasets, dim="site",)
-    _LOGGER.debug("Alphabetizing towers in influence functions")
-    _LOGGER.debug("Influence dataset:\n%s", influence_dataset)
-    influence_dataset = influence_dataset.reindex(
-        site=sorted(influence_dataset.indexes["site"])
-    )
+    # _LOGGER.debug("Alphabetizing towers in influence functions")
+    # _LOGGER.debug("Influence dataset:\n%s", influence_dataset)
+    # influence_dataset = influence_dataset.reindex(
+    #     site=sorted(influence_dataset.indexes["site"])
+    # )
     _LOGGER.debug("Aligning influence functions on flux time")
     obs_time_index = influence_dataset.indexes["observation_time"]
     first_obs_time = min(obs_time_index)
@@ -337,7 +339,8 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
     flux_dataset.attrs[
         "history"
     ] = "{0:s}: WRF fluxes combined into single file\n{1:s}".format(
-        datetime.datetime.utcnow().isoformat(), flux_datasets[0].attrs.get("history", ""),
+        datetime.datetime.utcnow().isoformat(),
+        flux_datasets[0].attrs.get("history", ""),
     )
     flux_dataset.attrs["file_list"] = " ".join(wrf_output_files)
     return flux_dataset
@@ -373,11 +376,32 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
     with netCDF4.Dataset(wrf_output_files[0], "r") as ds:
         # ll_to_ij would be a better name
         south_index, east_index = wrf.ll_to_xy(
-            ds, tower_locs["site_latitude"], tower_locs["site_longitude"]
+            ds, tower_locs["site_lats"], tower_locs["site_lons"]
         )
     wrf_mole_fractions = []
     for name in wrf_output_files:
-        ds = xarray.open_dataset(name)
+        ds = xarray.open_dataset(name).set_coords(
+            [
+                # Dim coords
+                "ZNU",
+                "ZNW",
+                "ZS",
+                "XTIME",
+                # formula terms
+                "P_TOP",
+                "PSFC",
+                # Ancillary vars
+                "HGT",
+                "XLAND",
+                "VEGFRA",
+                # Technically data vars, but I need them to interpret
+                # the rest properly.
+                "PH",
+                "PHB",
+                "P",
+                "PB",
+            ]
+        )
         mole_fraction_names = [
             name for name in ds.data_vars if name.startswith("tracer_")
         ]
