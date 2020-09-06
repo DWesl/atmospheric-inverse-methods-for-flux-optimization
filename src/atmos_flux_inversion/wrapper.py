@@ -389,8 +389,12 @@ def get_installed_modules():
             pip_args,
             universal_newlines=True
         )
-        package_info = [line.split("==") for line in output.split("\n")
-                        if line and not line.startswith("-")]
+        package_info = [
+            # Packages installed from a file are pkg @ /path/to/file
+            line.split("==") if "==" in line else line.split("@")
+            for line in output.split("\n")
+            if line and not line.startswith("-")
+        ]
 
         _PACKAGE_INFO = package_info
         return package_info
