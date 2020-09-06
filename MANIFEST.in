@@ -1,5 +1,6 @@
 recursive-include doc *.py *.rst
-recursive-include examples *.py
+recursive-include paper2020 *.py
+recursive-include real-data-inversion *.py
 include tox.ini setup.cfg pyproject.toml LICENSE.txt
 include PSU*Agreement.docx
 include CITATION.cff .zenodo.json
