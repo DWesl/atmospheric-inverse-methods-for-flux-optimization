@@ -65,7 +65,8 @@ N_GROUPS = 6
 """Number of groups of towers LPDM runs."""
 
 
-def make_sparse_ds(ds):
+def make_sparse_ds(lpdm_footprint_ds):
+    # (xarray.Datset) -> xarray.Dataset
     """Finish formatting a sparse dataset.
 
     Intended to be used as a callback in xarray.open_dataset and
@@ -73,60 +74,71 @@ def make_sparse_ds(ds):
 
     Parameters
     ----------
-    ds: xarray.Dataset
+    lpdm_footprint_ds: xarray.Dataset
 
     Returns
     -------
-    transformed_ds: xarray.Dataset
+    transformed_lpdm_footprint_ds: xarray.Dataset
 
     Note
     ----
-    Will load ds into memory to make it sparse.
+    Will load lpdm_footprint_ds into memory to make it sparse.
 
     """
-    _LOGGER.debug("Loading data for file %s", ds.encoding["source"])
-    ds = ds.load()
-    _LOGGER.debug("Making sparse influence function for file %s", ds.encoding["source"])
+    _LOGGER.debug("Loading data for file %s", lpdm_footprint_ds.encoding["source"])
+    lpdm_footprint_ds = lpdm_footprint_ds.load()
+    _LOGGER.debug(
+        "Making sparse influence function for file %s",
+        lpdm_footprint_ds.encoding["source"],
+    )
     # Find the list of axes
     # To make this truly general, we'd need to check for {name}_values
-    # {name}_coords pairs in ds.data_vars.  I'm not doing that yet,
+    # {name}_coords pairs in lpdm_footprint_ds.data_vars.  I'm not doing that yet,
     # since I'm only using it here.
-    if "compress" not in ds["H_values"].attrs:
-        ds["H_values"].attrs["compress"] = [
+    if "compress" not in lpdm_footprint_ds["H_values"].attrs:
+        lpdm_footprint_ds["H_values"].attrs["compress"] = [
             "observation_time",
             "site",
             "time_before_observation",
             "dim_y",
             "dim_x",
         ]
-    elif isinstance(ds["H_values"].attrs["compress"], str):
-        ds["H_values"].attrs["compress"] = ds["H_values"].attrs["compress"].split()
+    elif isinstance(lpdm_footprint_ds["H_values"].attrs["compress"], str):
+        lpdm_footprint_ds["H_values"].attrs["compress"] = (
+            lpdm_footprint_ds["H_values"].attrs["compress"].split()
+        )
     # Create the actual sparse DataArray
     sparse_data = sparse.COO(
-        ds["H_coords"].values,
-        ds["H_values"].values,
-        shape=tuple(ds.dims[dim] for dim in ds["H_values"].attrs["compress"]),
+        lpdm_footprint_ds["H_coords"].values,
+        lpdm_footprint_ds["H_values"].values,
+        shape=tuple(
+            lpdm_footprint_ds.dims[dim]
+            for dim in lpdm_footprint_ds["H_values"].attrs["compress"]
+        ),
     )
-    ds["H"] = (
-        ds["H_values"].attrs["compress"],
+    lpdm_footprint_ds["H"] = (
+        lpdm_footprint_ds["H_values"].attrs["compress"],
         sparse_data,
         {
             key: value
-            for key, value in ds["H_values"].attrs.items()
+            for key, value in lpdm_footprint_ds["H_values"].attrs.items()
             if key != "compress"
         },
     )
     _LOGGER.debug("Made sparse influence function, fixing coords")
-    del ds["H_values"], ds["H_coords"]
-    obs_time_index = ds.indexes["observation_time"].round("S")
-    ds.coords["observation_time"] = obs_time_index
-    time_back_index = ds.indexes["time_before_observation"].round("S")
-    ds.coords["time_before_observation"] = time_back_index
-    ds.coords["site"] = np.char.decode(ds["site_names"].values, "ascii")
-    return ds
+    del lpdm_footprint_ds["H_values"], lpdm_footprint_ds["H_coords"]
+    obs_time_index = lpdm_footprint_ds.indexes["observation_time"].round("S")
+    lpdm_footprint_ds.coords["observation_time"] = obs_time_index
+    time_back_index = lpdm_footprint_ds.indexes["time_before_observation"].round("S")
+    lpdm_footprint_ds.coords["time_before_observation"] = time_back_index
+    lpdm_footprint_ds.coords["site"] = np.char.decode(
+        lpdm_footprint_ds["site_names"].values, "ascii"
+    )
+    return lpdm_footprint_ds
 
 
 def get_lpdm_footprint(lpdm_footprint_dir, year, month):
+    # (str, int, int) -> xarray.Dataset
     """Read in LPDM footprints for a month.
 
     Parameters
@@ -171,7 +183,10 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         _LOGGER.debug("Done reading file %s", name)
         break
     _LOGGER.debug("Concatenating influence functions into single dataset")
-    influence_dataset = xarray.concat(influence_datasets, dim="site",)
+    influence_dataset = xarray.concat(
+        influence_datasets,
+        dim="site",
+    )
     # _LOGGER.debug("Alphabetizing towers in influence functions")
     # _LOGGER.debug("Influence dataset:\n%s", influence_dataset)
     # influence_dataset = influence_dataset.reindex(
@@ -230,6 +245,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
 
 
 def save_sparse_influences(lpdm_footprint, save_name):
+    # (xarray.Dataset, str) -> None
     """Save the sparse influence functions in a sparse format.
 
     Parameters
@@ -284,6 +300,7 @@ def save_sparse_influences(lpdm_footprint, save_name):
 
 
 def get_lpdm_tower_locations(lpdm_footprint):
+    # (xarray.Dataset) -> xarray.DataArray
     """Find the tower locations a footprint is good for.
 
     Parameters
@@ -298,6 +315,7 @@ def get_lpdm_tower_locations(lpdm_footprint):
 
 
 def get_wrf_fluxes(wrf_output_dir, year, month):
+    # (str, int, int) -> xarray.Dataset
     """Get WRF fluxes for a given month.
 
     Parameters
@@ -368,6 +386,7 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
 
 
 def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
+    # (str, int, int, xarray.Dataset) -> xarray.Dataset
     """Extract the WRF mole fractions at the tower locations.
 
     Parameters
@@ -401,7 +420,9 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
         )
     wrf_mole_fractions = []
     for name in wrf_output_files:
-        ds = xarray.open_dataset(name).set_coords(
+        ds = xarray.open_dataset(
+            name, chunks={"Time": 1, "south_north": 65}
+        ).set_coords(
             [
                 # Dim coords
                 "ZNU",
@@ -434,6 +455,7 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
 
 
 def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
+    # (xarray.Dataset, xarray.Dataset) -> xarray.Dataset
     """Convolve the footprint with the fluxes.
 
     Parameters
@@ -475,6 +497,14 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
 def compare_wrf_lpdm_mole_fractions_for_month(
     wrf_mole_fractions, lpdm_mole_fractions, year, month
 ):
+    # (xarray.Dataset, xarray.Dataset, int, int) -> matplotlib.figure.Figure
+    """Plot the WRF and LPDM mole fractions at the LPDM towers.
+
+    Parameters
+    ----------
+    wrf_mole_fractions, lpdm_mole_fractions: xarray.Dataset
+    year, month: int
+    """
     combined_mole_fractions = xarray.concat(
         [wrf_mole_fractions.isel(bottom_top=5), lpdm_mole_fractions],
         dim=pd.Index(["WRF", "LPDM"], name="model"),
