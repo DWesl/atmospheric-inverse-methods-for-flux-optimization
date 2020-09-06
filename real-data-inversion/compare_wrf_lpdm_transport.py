@@ -181,17 +181,16 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
             # .rename(site="site_names")
         )
         _LOGGER.debug("Done reading file %s", name)
-        break
     _LOGGER.debug("Concatenating influence functions into single dataset")
     influence_dataset = xarray.concat(
         influence_datasets,
         dim="site",
     )
-    # _LOGGER.debug("Alphabetizing towers in influence functions")
-    # _LOGGER.debug("Influence dataset:\n%s", influence_dataset)
-    # influence_dataset = influence_dataset.reindex(
-    #     site=sorted(influence_dataset.indexes["site"])
-    # )
+    _LOGGER.debug("Alphabetizing towers in influence functions")
+    influence_dataset = influence_dataset.reindex(
+        site=sorted(influence_dataset.indexes["site"])
+    )
+    _LOGGER.debug("Influence dataset:\n%s", influence_dataset)
     _LOGGER.debug("Aligning influence functions on flux time")
     obs_time_index = influence_dataset.indexes["observation_time"]
     first_obs_time = min(obs_time_index)
