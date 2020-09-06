@@ -326,7 +326,28 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
     flux_datasets = []
     for name in wrf_output_files:
         _LOGGER.debug("Reading fluxes from file %s", name)
-        ds = xarray.open_dataset(name)
+        ds = xarray.open_dataset(name, chunks={"Time": 1}).set_coords(
+            [
+                # Dim coords
+                "ZNU",
+                "ZNW",
+                "ZS",
+                "XTIME",
+                # formula terms
+                "P_TOP",
+                "PSFC",
+                # Ancillary vars
+                "HGT",
+                "XLAND",
+                "VEGFRA",
+                # Technically data vars, but I need them to interpret
+                # the rest properly.
+                "PH",
+                "PHB",
+                "P",
+                "PB",
+            ]
+        )
         flux_names = [name for name in ds.data_vars if name.startswith("E_TRA")]
         flux_datasets.append(ds[flux_names])
     _LOGGER.debug("Combining fluxes into single dataset")
@@ -374,8 +395,8 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
         for date in observation_time_index
     ]
     with netCDF4.Dataset(wrf_output_files[0], "r") as ds:
-        # ll_to_ij would be a better name
-        south_index, east_index = wrf.ll_to_xy(
+        # ll_to_ji would be a better name
+        east_index, south_index = wrf.ll_to_xy(
             ds, tower_locs["site_lats"], tower_locs["site_lons"]
         )
     wrf_mole_fractions = []
@@ -428,19 +449,23 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
         Time="flux_time", west_east="dim_x", south_north="dim_y"
     )
     result = xarray.Dataset()
-    for i in len(wrf_fluxes.data_vars):
+    for i in range(len(wrf_fluxes.data_vars)):
         result["tracer_{i:d}".format(i=i)] = lpdm_footprint["H"].dot(
-            fluxes_matched["E_TRA{i:d}".format(i=i)]
+            fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
         )
-        result["tracer_{i:d}".format(i=i)].attrs.update(
+        result["tracer_{i:d}".format(i=i + 1)].attrs.update(
             {
                 "standard_name": "carbon_dioxide_mole_fraction",
                 "long_name": (
-                    "carbon_dioxide_mole_fraction_enhancement_tracer_{0:d}".format(i)
+                    "carbon_dioxide_mole_fraction_enhancement_tracer_{0:d}".format(
+                        i + 1
+                    )
                 ),
                 "units": "ppm",
                 "description": (
-                    "CO2 mole fractions predicted by LPDM for tracer {0:d}".format(i)
+                    "CO2 mole fractions predicted by LPDM for tracer {0:d}".format(
+                        i + 1
+                    )
                 ),
             }
         )
