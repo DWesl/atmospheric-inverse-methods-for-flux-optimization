@@ -10,10 +10,11 @@ extension-pkg-whitelist=
     numpy.core.umath,
     numpy.linalg.lapack_lite,
     scipy.linalg.decomp_cholesky
+    netCDF4
 
 # Add files or directories to the blacklist. They should be base names, not
 # paths.
-# pylint really does not like unittest=style tests
+# pylint really does not like unittest-style tests
 # linalg_interface mostly isn't my code.
 ignore=CVS,.git,tests.py,linalg_interface.py
 
