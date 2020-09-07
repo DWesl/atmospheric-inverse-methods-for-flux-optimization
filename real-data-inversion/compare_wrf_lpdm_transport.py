@@ -222,6 +222,11 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         dim="observation_time",
         fill_value=np.array(0, dtype=influence_dataset["H"].dtype),
     ).to_dataset()
+    _LOGGER.debug("Rechunking aligned dataset")
+    aligned_influence = aligned_influence.rechunk(
+        {"flux_time": 8, "observation_time": 24}
+    )
+    _LOGGER.debug("Adding bounds and coords to influence functions")
     for bound_name in (
         "observation_time_bnds",
         "dim_y_bnds",
@@ -471,25 +476,26 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
     )
     result = xarray.Dataset()
     for i in range(len(wrf_fluxes.data_vars)):
-        result["tracer_{i:d}".format(i=i)] = lpdm_footprint["H"].dot(
+        result["tracer_{i:d}".format(i=i + 1)] = lpdm_footprint["H"].dot(
             fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
         )
-        result["tracer_{i:d}".format(i=i + 1)].attrs.update(
-            {
-                "standard_name": "carbon_dioxide_mole_fraction",
-                "long_name": (
-                    "carbon_dioxide_mole_fraction_enhancement_tracer_{0:d}".format(
-                        i + 1
-                    )
-                ),
-                "units": "ppm",
-                "description": (
-                    "CO2 mole fractions predicted by LPDM for tracer {0:d}".format(
-                        i + 1
-                    )
-                ),
-            }
-        )
+        ### I really don't understand why this crashes
+        # result["tracer_{i:d}".format(i=i + 1)].attrs.update(
+        #     {
+        #         "standard_name": "carbon_dioxide_mole_fraction",
+        #         "long_name": (
+        #             "carbon_dioxide_mole_fraction_enhancement_tracer_{0:d}".format(
+        #                 i + 1
+        #             )
+        #         ),
+        #         "units": "ppm",
+        #         "description": (
+        #             "CO2 mole fractions predicted by LPDM for tracer {0:d}".format(
+        #                 i + 1
+        #             )
+        #         ),
+        #     }
+        # )
     return result
 
 
