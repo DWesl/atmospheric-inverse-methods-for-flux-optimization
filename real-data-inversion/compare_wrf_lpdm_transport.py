@@ -258,12 +258,12 @@ def save_sparse_influences(lpdm_footprint, save_name):
     save_name: str
     """
     _LOGGER.debug("Store sparse format data directly in dataset")
-    sparse_H = sparse.COO(lpdm_footprint["H"].data)
+    sparse_infl_fun = sparse.COO(lpdm_footprint["H"].data)
     lpdm_footprint["H_coords"] = (
         ("H_coo_coords", "H_coo_nnz"),
         # I know int16 will work for a single month
         # If saving footprints for mu
-        sparse_H.coords.astype(np.int16),
+        sparse_infl_fun.coords.astype(np.int16),
         {
             "description": (
                 "Indexes of nonzero values in a multidimensional array, "
@@ -274,7 +274,7 @@ def save_sparse_influences(lpdm_footprint, save_name):
     lpdm_footprint["H_coords"].encoding.update({"zlib": True})
     lpdm_footprint["H_values"] = (
         ("H_coo_nnz",),
-        sparse_H.data,
+        sparse_infl_fun.data,
         {
             "description": (
                 "Nonzero values in a multidimensional array, "
@@ -287,7 +287,7 @@ def save_sparse_influences(lpdm_footprint, save_name):
     lpdm_footprint["H_values"].encoding.update({"zlib": True})
     lpdm_footprint["H_coo_nnz"] = (
         ("H_coo_nnz",),
-        np.ravel_multi_index(sparse_H.coords, lpdm_footprint["H"].shape),
+        np.ravel_multi_index(sparse_infl_fun.coords, lpdm_footprint["H"].shape),
         {
             "compress": " ".join(lpdm_footprint["H"].dims),
             "description": "Indices of nonzero values in flattened array",
