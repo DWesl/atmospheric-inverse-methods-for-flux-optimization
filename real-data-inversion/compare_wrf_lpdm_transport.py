@@ -565,16 +565,16 @@ if __name__ == "__main__":
     args = PARSER.parse_args()
     _LOGGER.debug("Command-line arguments: %s", args)
     lpdm_footprint = get_lpdm_footprint(args.lpdm_footprint_dir, args.year, args.month)
-    _LOGGER.info("Footprints loaded")
-    lpdm_locs = get_lpdm_tower_locations(lpdm_footprint)
+    _LOGGER.info("Footprints read")
+    lpdm_locs = get_lpdm_tower_locations(lpdm_footprint).load()
     _LOGGER.info("Have locations")
     wrf_fluxes = get_wrf_fluxes(args.wrf_output_dir, args.year, args.month)
     _LOGGER.info("Have fluxes")
     wrf_mole_fractions = get_wrf_mole_fractions(
         args.wrf_output_dir, args.year, args.month, lpdm_locs
-    )
+    ).load()
     _LOGGER.info("Have WRF mole fractions")
-    lpdm_mole_fractions = lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes)
+    lpdm_mole_fractions = lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes).load()
     _LOGGER.info("Have LPDM mole fractions")
     # fig = compare_wrf_lpdm_mole_fractions_for_month(
     #     wrf_mole_fractions, lpdm_mole_fractions, args.year, args.month
