@@ -223,7 +223,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         fill_value=np.array(0, dtype=influence_dataset["H"].dtype),
     ).to_dataset()
     _LOGGER.debug("Rechunking aligned dataset")
-    aligned_influence = aligned_influence.rechunk(
+    aligned_influence = aligned_influence.chunk(
         {"flux_time": 8, "observation_time": 24}
     )
     _LOGGER.debug("Adding bounds and coords to influence functions")
