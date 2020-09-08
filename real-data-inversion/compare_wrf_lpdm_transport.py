@@ -198,23 +198,23 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     _LOGGER.debug("Influence dataset:\n%s", influence_dataset)
     _LOGGER.debug("Aligning influence functions on flux time")
     obs_time_index = influence_dataset.indexes["observation_time"]
-    first_obs_time = min(obs_time_index)
-    flux_start = (
-        first_obs_time - max(influence_dataset.indexes["time_before_observation"])
-    ).replace(hour=0)
-    last_obs_time = max(obs_time_index)
-    if last_obs_time.hour != 0:
-        flux_end = last_obs_time.replace(hour=0) + datetime.timedelta(days=1)
-    else:
-        flux_end = last_obs_time
-    flux_time_index = pd.date_range(
-        flux_start,
-        flux_end,
-        freq="{flux_interval:d}H".format(flux_interval=FLUX_INTERVAL),
-        tz="UTC",
-        closed="right",
-        name="flux_times",
-    )
+    # first_obs_time = min(obs_time_index)
+    # last_obs_time = max(obs_time_index)
+    # flux_start = (
+    #     first_obs_time - max(influence_dataset.indexes["time_before_observation"])
+    # ).replace(hour=0)
+    # if last_obs_time.hour != 0:
+    #     flux_end = last_obs_time.replace(hour=0) + datetime.timedelta(days=1)
+    # else:
+    #     flux_end = last_obs_time
+    # flux_time_index = pd.date_range(
+    #     flux_start,
+    #     flux_end,
+    #     freq="{flux_interval:d}H".format(flux_interval=FLUX_INTERVAL),
+    #     tz="UTC",
+    #     closed="right",
+    #     name="flux_times",
+    # )
     aligned_influence = xarray.concat(
         [
             influence_dataset["H"]
@@ -353,7 +353,7 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
     flux_datasets = []
     for name in wrf_output_files:
         _LOGGER.debug("Reading fluxes from file %s", name)
-        ds = xarray.open_dataset(name, chunks={"Time": 1}).set_coords(
+        wrf_ds = xarray.open_dataset(name, chunks={"Time": 1}).set_coords(
             [
                 # Dim coords
                 "ZNU",
@@ -375,8 +375,8 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
                 "PB",
             ]
         )
-        flux_names = [name for name in ds.data_vars if name.startswith("E_TRA")]
-        flux_datasets.append(ds[flux_names])
+        flux_names = [name for name in wrf_ds.data_vars if name.startswith("E_TRA")]
+        flux_datasets.append(wrf_ds[flux_names])
     _LOGGER.debug("Combining fluxes into single dataset")
     flux_dataset = xarray.concat(flux_datasets, dim="Time")
     flux_dataset.coords["Time"] = (
@@ -422,14 +422,15 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
         )
         for date in observation_time_index
     ]
-    with netCDF4.Dataset(wrf_output_files[0], "r") as ds:
+    with netCDF4.Dataset(wrf_output_files[0], "r") as reference_ds:
         # ll_to_ji would be a better name
         east_index, south_index = wrf.ll_to_xy(
-            ds, tower_locs["site_lats"], tower_locs["site_lons"]
+            reference_ds, tower_locs["site_lats"], tower_locs["site_lons"]
         )
+    del reference_ds
     wrf_mole_fractions = []
     for name in wrf_output_files:
-        ds = xarray.open_dataset(
+        wrf_ds = xarray.open_dataset(
             name, chunks={"Time": 1, "south_north": 65}
         ).set_coords(
             [
@@ -454,9 +455,9 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
             ]
         )
         mole_fraction_names = [
-            name for name in ds.data_vars if name.startswith("tracer_")
+            name for name in wrf_ds.data_vars if name.startswith("tracer_")
         ]
-        mole_fraction_fields = ds[mole_fraction_names]
+        mole_fraction_fields = wrf_ds[mole_fraction_names]
         wrf_mole_fractions.append(
             mole_fraction_fields.isel(south_north=south_index, west_east=east_index)
         )
@@ -484,7 +485,8 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
         result["tracer_{i:d}".format(i=i + 1)] = lpdm_footprint["H"].dot(
             fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
         )
-        ### I really don't understand why this crashes
+        # # I really don't understand why this crashes
+        # TODO: fix crashes in code below
         # result["tracer_{i:d}".format(i=i + 1)].attrs.update(
         #     {
         #         "standard_name": "carbon_dioxide_mole_fraction",
@@ -537,26 +539,55 @@ def compare_wrf_lpdm_mole_fractions_for_month(
     return grid.fig
 
 
-def save_nonsparse_netcdf(ds, save_name):
+def save_nonsparse_netcdf(ds_to_save, save_name):
     # type: (xarray.Dataset, str) -> None
     """Save the dataset at the name.
 
     Parameters
     ----------
-    ds: xarray.Dataset
+    ds_to_save: xarray.Dataset
     save_name: str
     """
     # I may need to rethink the fill value with integer datasets
-    encoding = {name: {"zlib": True, "_FillValue": -9.99e9} for name in ds.data_vars}
-    encoding.update({name: {"zlib": True, "_FillValue": None} for name in ds.coords})
-    ds.to_netcdf(save_name, mode="w", format="NETCDF4", encoding=encoding)
+    encoding = {
+        name: {"zlib": True, "_FillValue": -9.99e9} for name in ds_to_save.data_vars
+    }  # type: Dict[Hashable, Dict[str, Any]]
+    encoding.update(
+        {name: {"zlib": True, "_FillValue": None} for name in ds_to_save.coords}
+    )
+    ds_to_save.to_netcdf(save_name, mode="w", format="NETCDF4", encoding=encoding)
 
 
-PATH_TYPE = str
+def existing_directory(path):
+    # type: (str) -> str
+    """Check whether the path is an existing directory.
+
+    Parameters
+    ----------
+    path: str
+
+    Returns
+    -------
+    path: str
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If path is not an existing directory
+    """
+    if not os.path.exists(path):
+        raise argparse.ArgumentTypeError(
+            "Directory '{0:s}' does not exist".format(path)
+        )
+    if not os.path.isdir(path):
+        raise argparse.ArgumentTypeError("'{0:s}' is not a directory".format(path))
+    return path
+
+
 PARSER = argparse.ArgumentParser(description=__doc__)
-PARSER.add_argument("lpdm_footprint_dir", type=PATH_TYPE)
-PARSER.add_argument("wrf_output_dir", type=PATH_TYPE)
-PARSER.add_argument("output_dir", type=PATH_TYPE)
+PARSER.add_argument("lpdm_footprint_dir", type=existing_directory)
+PARSER.add_argument("wrf_output_dir", type=existing_directory)
+PARSER.add_argument("output_dir", type=existing_directory)
 PARSER.add_argument("year", type=int)
 PARSER.add_argument("month", type=int)
 
