@@ -20,6 +20,11 @@ import sparse
 import xarray
 import wrf
 
+TYPING = False
+if TYPING:
+    import matplotlib as mpl
+    from typing import Dict, Any, Hashable
+
 logging.basicConfig(
     format=(
         "%(asctime)s:%(levelname)7s:%(name)8s:"
@@ -66,7 +71,7 @@ N_GROUPS = 6
 
 
 def make_sparse_ds(lpdm_footprint_ds):
-    # (xarray.Datset) -> xarray.Dataset
+    # type: (xarray.Dataset) -> xarray.Dataset
     """Finish formatting a sparse dataset.
 
     Intended to be used as a callback in xarray.open_dataset and
@@ -138,7 +143,7 @@ def make_sparse_ds(lpdm_footprint_ds):
 
 
 def get_lpdm_footprint(lpdm_footprint_dir, year, month):
-    # (str, int, int) -> xarray.Dataset
+    # type: (str, int, int) -> xarray.Dataset
     """Read in LPDM footprints for a month.
 
     Parameters
@@ -249,7 +254,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
 
 
 def save_sparse_influences(lpdm_footprint, save_name):
-    # (xarray.Dataset, str) -> None
+    # type: (xarray.Dataset, str) -> None
     """Save the sparse influence functions in a sparse format.
 
     Parameters
@@ -296,7 +301,7 @@ def save_sparse_influences(lpdm_footprint, save_name):
     del lpdm_footprint["H"]
     encoding = {
         name: {"zlib": True, "_FillValue": -9.99e9} for name in lpdm_footprint.data_vars
-    }
+    }  # type: Dict[Hashable, Dict[str, Any]]
     encoding.update(
         {name: {"zlib": True, "_FillValue": None} for name in lpdm_footprint.coords}
     )
@@ -304,7 +309,7 @@ def save_sparse_influences(lpdm_footprint, save_name):
 
 
 def get_lpdm_tower_locations(lpdm_footprint):
-    # (xarray.Dataset) -> xarray.DataArray
+    # type: (xarray.Dataset) -> xarray.DataArray
     """Find the tower locations a footprint is good for.
 
     Parameters
@@ -319,7 +324,7 @@ def get_lpdm_tower_locations(lpdm_footprint):
 
 
 def get_wrf_fluxes(wrf_output_dir, year, month):
-    # (str, int, int) -> xarray.Dataset
+    # type: (str, int, int) -> xarray.Dataset
     """Get WRF fluxes for a given month.
 
     Parameters
@@ -390,7 +395,7 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
 
 
 def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
-    # (str, int, int, xarray.Dataset) -> xarray.Dataset
+    # type: (str, int, int, xarray.DataArray) -> xarray.Dataset
     """Extract the WRF mole fractions at the tower locations.
 
     Parameters
@@ -459,7 +464,7 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
 
 
 def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
-    # (xarray.Dataset, xarray.Dataset) -> xarray.Dataset
+    # type: (xarray.Dataset, xarray.Dataset) -> xarray.Dataset
     """Convolve the footprint with the fluxes.
 
     Parameters
@@ -502,7 +507,7 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
 def compare_wrf_lpdm_mole_fractions_for_month(
     wrf_mole_fractions, lpdm_mole_fractions, year, month
 ):
-    # (xarray.Dataset, xarray.Dataset, int, int) -> matplotlib.figure.Figure
+    # type: (xarray.Dataset, xarray.Dataset, int, int) -> mpl.figure.Figure
     """Plot the WRF and LPDM mole fractions at the LPDM towers.
 
     Parameters
@@ -533,6 +538,7 @@ def compare_wrf_lpdm_mole_fractions_for_month(
 
 
 def save_nonsparse_netcdf(ds, save_name):
+    # type: (xarray.Dataset, str) -> None
     """Save the dataset at the name.
 
     Parameters
