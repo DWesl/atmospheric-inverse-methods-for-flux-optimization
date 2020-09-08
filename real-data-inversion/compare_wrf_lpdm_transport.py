@@ -570,9 +570,9 @@ if __name__ == "__main__":
     _LOGGER.info("Have WRF mole fractions")
     lpdm_mole_fractions = lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes)
     _LOGGER.info("Have LPDM mole fractions")
-    fig = compare_wrf_lpdm_mole_fractions_for_month(
-        wrf_mole_fractions, lpdm_mole_fractions, args.year, args.month
-    )
+    # fig = compare_wrf_lpdm_mole_fractions_for_month(
+    #     wrf_mole_fractions, lpdm_mole_fractions, args.year, args.month
+    # )
     save_nonsparse_netcdf(
         lpdm_footprint,
         os.path.join(
