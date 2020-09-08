@@ -574,21 +574,6 @@ if __name__ == "__main__":
     #     wrf_mole_fractions, lpdm_mole_fractions, args.year, args.month
     # )
     save_nonsparse_netcdf(
-        lpdm_footprint,
-        os.path.join(
-            args.output_dir,
-            (
-                "LPDM_{year:04d}_{month:02d}_{flux_interval:02d}hrly_{res:03d}km"
-                "_flux_time_aligned_molar_footprints.nc4"
-            ).format(
-                year=args.year,
-                month=args.month,
-                flux_interval=FLUX_INTERVAL,
-                res=FLUX_RESOLUTION,
-            ),
-        ),
-    )
-    save_nonsparse_netcdf(
         wrf_fluxes,
         os.path.join(
             args.output_dir,
@@ -603,6 +588,7 @@ if __name__ == "__main__":
             ),
         ),
     )
+    _LOGGER.info("Saved WRF fluxes")
     save_nonsparse_netcdf(
         wrf_mole_fractions,
         os.path.join(
@@ -618,6 +604,7 @@ if __name__ == "__main__":
             ),
         ),
     )
+    _LOGGER.info("Saved WRF mole fractions")
     save_nonsparse_netcdf(
         lpdm_mole_fractions,
         os.path.join(
@@ -633,6 +620,23 @@ if __name__ == "__main__":
             ),
         ),
     )
+    _LOGGER.info("Saved LPDM mole fractions")
+    save_nonsparse_netcdf(
+        lpdm_footprint,
+        os.path.join(
+            args.output_dir,
+            (
+                "LPDM_{year:04d}_{month:02d}_{flux_interval:02d}hrly_{res:03d}km"
+                "_flux_time_aligned_molar_footprints.nc4"
+            ).format(
+                year=args.year,
+                month=args.month,
+                flux_interval=FLUX_INTERVAL,
+                res=FLUX_RESOLUTION,
+            ),
+        ),
+    )
+    _LOGGER.info("Saved aligned footprint (dense)")
     save_sparse_influences(
         lpdm_footprint,
         os.path.join(
@@ -648,3 +652,4 @@ if __name__ == "__main__":
             ),
         ),
     )
+    _LOGGER.info("Saved aligned footprint (sparse)")
