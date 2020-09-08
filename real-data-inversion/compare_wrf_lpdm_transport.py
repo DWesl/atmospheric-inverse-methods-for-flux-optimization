@@ -603,10 +603,14 @@ if __name__ == "__main__":
     _LOGGER.info("Have fluxes")
     wrf_mole_fractions = get_wrf_mole_fractions(
         args.wrf_output_dir, args.year, args.month, lpdm_locs
-    ).load()
+    )
     _LOGGER.info("Have WRF mole fractions")
-    lpdm_mole_fractions = lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes).load()
+    wrf_mole_fractions = wrf_mole_fractions.load()
+    _LOGGER.info("Loaded WRF mole fractions")
+    lpdm_mole_fractions = lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes)
     _LOGGER.info("Have LPDM mole fractions")
+    lpdm_mole_fractions = lpdm_mole_fractions.load()
+    _LOGGER.info("Loaded LPDM mole fractions")
     # fig = compare_wrf_lpdm_mole_fractions_for_month(
     #     wrf_mole_fractions, lpdm_mole_fractions, args.year, args.month
     # )
