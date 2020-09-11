@@ -35,7 +35,7 @@ logging.basicConfig(
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.info("Done imports, starting code")
 
-dask_conf.set(num_workers=2, scheduler="threads")
+dask_conf.set(num_workers=8, scheduler="threads")
 xarray.set_options(display_width=100, keep_attrs=True)
 
 # Physical constants
@@ -382,7 +382,7 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
     flux_dataset.coords["Time"] = (
         ("Time",),
         flux_time_index,
-        {"standard_name": "time", "calendar": "standard"},
+        {"standard_name": "time"},
     )
     flux_dataset.attrs[
         "history"
@@ -428,6 +428,10 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
             reference_ds, tower_locs["site_lats"], tower_locs["site_lons"]
         )
     del reference_ds
+    _LOGGER.debug("Tower locations and coordinates: %s", tower_locs)
+    _LOGGER.debug("East and south indices:\n%s\n%s", east_index, south_index)
+    # east_index.coords["idx"] = tower_locs.coords["site"]
+    # south_index.coords["idx"] = tower_locs.coords["site"]
     wrf_mole_fractions = []
     for name in wrf_output_files:
         wrf_ds = xarray.open_dataset(
@@ -461,7 +465,13 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
         wrf_mole_fractions.append(
             mole_fraction_fields.isel(south_north=south_index, west_east=east_index)
         )
-    return xarray.concat(wrf_mole_fractions, dim="Time")
+    result = xarray.concat(wrf_mole_fractions, dim="Time").rename(idx="site")
+    for tower_coord_name in ("site", "site_lats", "site_lons"):
+        result.coords[tower_coord_name] = tower_locs.coords[tower_coord_name]
+    # Now redundant.
+    del result.coords["latlon_coord"]
+    _LOGGER.debug("WRF mole fractions: %s", result)
+    return result
 
 
 def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
@@ -605,8 +615,8 @@ if __name__ == "__main__":
         args.wrf_output_dir, args.year, args.month, lpdm_locs
     )
     _LOGGER.info("Have WRF mole fractions")
-    wrf_mole_fractions = wrf_mole_fractions.load()
-    _LOGGER.info("Loaded WRF mole fractions")
+    # wrf_mole_fractions = wrf_mole_fractions.load()
+    # _LOGGER.info("Loaded WRF mole fractions")
     lpdm_mole_fractions = lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes)
     _LOGGER.info("Have LPDM mole fractions")
     lpdm_mole_fractions = lpdm_mole_fractions.load()
