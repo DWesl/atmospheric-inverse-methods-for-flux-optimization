@@ -142,6 +142,57 @@ def make_sparse_ds(lpdm_footprint_ds):
     return lpdm_footprint_ds
 
 
+def set_wrf_coords(wrf_ds):
+    # type: (xarray.Dataset) -> xarray.Dataset
+    """Set coordinates on the WRF dataset.
+
+    Which variables I set as coordinates is chosen mostly by personal
+    preference.
+
+    Parameters
+    ----------
+    wrf_ds: xarray.Dataset
+
+    Returns
+    -------
+    wrf_ds
+    """
+    wrf_ds = wrf_ds.set_coords(
+        [
+            # Dim coords
+            "ZNU",
+            "ZNW",
+            "ZS",
+            "XTIME",
+            # formula terms
+            "P_TOP",
+            "PSFC",
+            # Ancillary vars
+            "HGT",
+            "XLAND",
+            "VEGFRA",
+            # Technically data vars, but I need them to interpret
+            # the rest properly.
+            "PH",
+            "PHB",
+            "P",
+            "PB",
+        ]
+    )
+    # These variables don't change in static nesting scenarios
+    for coord_name in (
+        "ZNU",
+        "ZNW",
+        "ZS",
+        "P_TOP",
+        "HGT",
+        "XLAT",
+        "XLONG",
+    ):
+        wrf_ds.coords[coord_name] = wrf_ds.coords[coord_name].isel(Time=0).sum("Time")
+    return wrf_ds
+
+
 def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     # type: (str, int, int) -> xarray.Dataset
     """Read in LPDM footprints for a month.
@@ -353,28 +404,7 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
     flux_datasets = []
     for name in wrf_output_files:
         _LOGGER.debug("Reading fluxes from file %s", name)
-        wrf_ds = xarray.open_dataset(name, chunks={"Time": 1}).set_coords(
-            [
-                # Dim coords
-                "ZNU",
-                "ZNW",
-                "ZS",
-                "XTIME",
-                # formula terms
-                "P_TOP",
-                "PSFC",
-                # Ancillary vars
-                "HGT",
-                "XLAND",
-                "VEGFRA",
-                # Technically data vars, but I need them to interpret
-                # the rest properly.
-                "PH",
-                "PHB",
-                "P",
-                "PB",
-            ]
-        )
+        wrf_ds = set_wrf_coords(xarray.open_dataset(name, chunks={"Time": 1}))
         flux_names = [name for name in wrf_ds.data_vars if name.startswith("E_TRA")]
         flux_datasets.append(wrf_ds[flux_names])
     _LOGGER.debug("Combining fluxes into single dataset")
@@ -434,29 +464,8 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
     # south_index.coords["idx"] = tower_locs.coords["site"]
     wrf_mole_fractions = []
     for name in wrf_output_files:
-        wrf_ds = xarray.open_dataset(
-            name, chunks={"Time": 1, "south_north": 65}
-        ).set_coords(
-            [
-                # Dim coords
-                "ZNU",
-                "ZNW",
-                "ZS",
-                "XTIME",
-                # formula terms
-                "P_TOP",
-                "PSFC",
-                # Ancillary vars
-                "HGT",
-                "XLAND",
-                "VEGFRA",
-                # Technically data vars, but I need them to interpret
-                # the rest properly.
-                "PH",
-                "PHB",
-                "P",
-                "PB",
-            ]
+        wrf_ds = set_wrf_coords(
+            xarray.open_dataset(name, chunks={"Time": 1, "south_north": 65})
         )
         mole_fraction_names = [
             name for name in wrf_ds.data_vars if name.startswith("tracer_")
@@ -489,7 +498,7 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
     """
     fluxes_matched = wrf_fluxes.rename(
         Time="flux_time", west_east="dim_x", south_north="dim_y"
-    )
+    ).sum("emissions_zdim")
     result = xarray.Dataset()
     for i in range(len(wrf_fluxes.data_vars)):
         result["tracer_{i:d}".format(i=i + 1)] = lpdm_footprint["H"].dot(
@@ -615,8 +624,8 @@ if __name__ == "__main__":
         args.wrf_output_dir, args.year, args.month, lpdm_locs
     )
     _LOGGER.info("Have WRF mole fractions")
-    # wrf_mole_fractions = wrf_mole_fractions.load()
-    # _LOGGER.info("Loaded WRF mole fractions")
+    wrf_mole_fractions = wrf_mole_fractions.load()
+    _LOGGER.info("Loaded WRF mole fractions")
     lpdm_mole_fractions = lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes)
     _LOGGER.info("Have LPDM mole fractions")
     lpdm_mole_fractions = lpdm_mole_fractions.load()
@@ -672,22 +681,6 @@ if __name__ == "__main__":
         ),
     )
     _LOGGER.info("Saved LPDM mole fractions")
-    save_nonsparse_netcdf(
-        lpdm_footprint,
-        os.path.join(
-            args.output_dir,
-            (
-                "LPDM_{year:04d}_{month:02d}_{flux_interval:02d}hrly_{res:03d}km"
-                "_flux_time_aligned_molar_footprints.nc4"
-            ).format(
-                year=args.year,
-                month=args.month,
-                flux_interval=FLUX_INTERVAL,
-                res=FLUX_RESOLUTION,
-            ),
-        ),
-    )
-    _LOGGER.info("Saved aligned footprint (dense)")
     save_sparse_influences(
         lpdm_footprint,
         os.path.join(
@@ -704,3 +697,19 @@ if __name__ == "__main__":
         ),
     )
     _LOGGER.info("Saved aligned footprint (sparse)")
+    save_nonsparse_netcdf(
+        lpdm_footprint,
+        os.path.join(
+            args.output_dir,
+            (
+                "LPDM_{year:04d}_{month:02d}_{flux_interval:02d}hrly_{res:03d}km"
+                "_flux_time_aligned_molar_footprints.nc4"
+            ).format(
+                year=args.year,
+                month=args.month,
+                flux_interval=FLUX_INTERVAL,
+                res=FLUX_RESOLUTION,
+            ),
+        ),
+    )
+    _LOGGER.info("Saved aligned footprint (dense)")
