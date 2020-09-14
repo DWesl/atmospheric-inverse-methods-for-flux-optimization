@@ -518,7 +518,9 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
     result = xarray.Dataset()
     for i in range(len(wrf_fluxes.data_vars)):
         _LOGGER.debug("Influence function to convolve:\n%s", lpdm_footprint["H"])
-        _LOGGER.debug("Fluxes to convolve:\n%s", fluxes_matched["E_TRA{i:d}".format(i=i + 1)])
+        _LOGGER.debug(
+            "Fluxes to convolve:\n%s", fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
+        )
         result["tracer_{i:d}".format(i=i + 1)] = lpdm_footprint["H"].dot(
             fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
         )
@@ -556,7 +558,7 @@ def compare_wrf_lpdm_mole_fractions_for_month(
     """
     combined_mole_fractions = xarray.concat(
         [
-            wrf_mole_fractions.isel(bottom_top=3).rename(Time="observation_time"),
+            wrf_mole_fractions.isel(bottom_top=5).rename(Time="observation_time"),
             lpdm_mole_fractions.isel(emissions_zdim=0),
         ],
         dim=pd.Index(["WRF", "LPDM"], name="model"),
@@ -609,7 +611,11 @@ def compare_wrf_lpdm_mole_fractions_for_month(
             )
         for ax in axes[:, 0]:
             ax.set_ylabel("CO\N{SUBSCRIPT TWO} tracer\n(ppm)")
-        fig.legend([wrf_line, lpdm_line], ["WRF", "LPDM"], loc="upper left")
+        fig.legend(
+            [wrf_line, lpdm_line],
+            ["WRF (\N{APPROXIMATELY EQUAL TO}200m AGL)", "LPDM"],
+            loc="upper left",
+        )
         fig.savefig(
             "wrf-lpdm-mole-fraction-comparison-{0:03d}-{1:02d}-tracer-{2:d}.pdf".format(
                 year, month, tracer_num
@@ -747,35 +753,35 @@ if __name__ == "__main__":
         ),
     )
     _LOGGER.info("Saved LPDM mole fractions")
-    save_sparse_influences(
-        lpdm_footprint,
-        os.path.join(
-            args.output_dir,
-            (
-                "LPDM_{year:04d}_{month:02d}_{flux_interval:02d}hrly_{res:03d}km"
-                "_flux_time_aligned_sparse_molar_footprints.nc4"
-            ).format(
-                year=args.year,
-                month=args.month,
-                flux_interval=FLUX_INTERVAL,
-                res=FLUX_RESOLUTION,
-            ),
-        ),
-    )
-    _LOGGER.info("Saved aligned footprint (sparse)")
-    save_nonsparse_netcdf(
-        lpdm_footprint,
-        os.path.join(
-            args.output_dir,
-            (
-                "LPDM_{year:04d}_{month:02d}_{flux_interval:02d}hrly_{res:03d}km"
-                "_flux_time_aligned_molar_footprints.nc4"
-            ).format(
-                year=args.year,
-                month=args.month,
-                flux_interval=FLUX_INTERVAL,
-                res=FLUX_RESOLUTION,
-            ),
-        ),
-    )
-    _LOGGER.info("Saved aligned footprint (dense)")
+    # save_sparse_influences(
+    #     lpdm_footprint,
+    #     os.path.join(
+    #         args.output_dir,
+    #         (
+    #             "LPDM_{year:04d}_{month:02d}_{flux_interval:02d}hrly_{res:03d}km"
+    #             "_flux_time_aligned_sparse_molar_footprints.nc4"
+    #         ).format(
+    #             year=args.year,
+    #             month=args.month,
+    #             flux_interval=FLUX_INTERVAL,
+    #             res=FLUX_RESOLUTION,
+    #         ),
+    #     ),
+    # )
+    # _LOGGER.info("Saved aligned footprint (sparse)")
+    # save_nonsparse_netcdf(
+    #     lpdm_footprint,
+    #     os.path.join(
+    #         args.output_dir,
+    #         (
+    #             "LPDM_{year:04d}_{month:02d}_{flux_interval:02d}hrly_{res:03d}km"
+    #             "_flux_time_aligned_molar_footprints.nc4"
+    #         ).format(
+    #             year=args.year,
+    #             month=args.month,
+    #             flux_interval=FLUX_INTERVAL,
+    #             res=FLUX_RESOLUTION,
+    #         ),
+    #     ),
+    # )
+    # _LOGGER.info("Saved aligned footprint (dense)")
