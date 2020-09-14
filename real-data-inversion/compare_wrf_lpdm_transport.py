@@ -206,7 +206,7 @@ def read_wrf_file(wrf_name):
     del height_agl.attrs["projection"]
     wrf_ds.coords["Time"] = (
         ("Time",),
-        time,
+        time.expand_dims("Time"),
         {"standard_name": "time", "calendar": "standard"},
     )
     return wrf_ds
