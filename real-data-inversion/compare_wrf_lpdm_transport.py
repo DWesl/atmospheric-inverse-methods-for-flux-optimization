@@ -13,6 +13,8 @@ import os.path
 
 import dask.config as dask_conf
 import dateutil.tz
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 import numpy as np
 import netCDF4
 import pandas as pd
@@ -160,6 +162,7 @@ def read_wrf_file(wrf_name):
     """
     with netCDF4.Dataset(wrf_name, "r") as wrf_nc:
         height_agl = wrf.getvar(wrf_nc, "height_agl", squeeze=False)
+        time = wrf.getvar(wrf_nc, "times")
     wrf_ds = xarray.open_dataset(wrf_name, {"Time": 1}).set_coords(
         [
             # Dim coords
@@ -200,6 +203,11 @@ def read_wrf_file(wrf_name):
         **height_agl.attrs["projection"].cartopy().proj4_params
     ).crs.to_wkt()
     del height_agl.attrs["projection"]
+    wrf_ds.coords["Time"] = (
+        ("Time",),
+        time,
+        {"standard_name": "time", "calendar": "standard"},
+    )
     return wrf_ds
 
 
@@ -509,6 +517,8 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
     ).sum("emissions_zdim")
     result = xarray.Dataset()
     for i in range(len(wrf_fluxes.data_vars)):
+        _LOGGER.debug("Influence function to convolve:\n%s", lpdm_footprint["H"])
+        _LOGGER.debug("Fluxes to convolve:\n%s", fluxes_matched["E_TRA{i:d}".format(i=i + 1)])
         result["tracer_{i:d}".format(i=i + 1)] = lpdm_footprint["H"].dot(
             fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
         )
@@ -545,25 +555,73 @@ def compare_wrf_lpdm_mole_fractions_for_month(
     year, month: int
     """
     combined_mole_fractions = xarray.concat(
-        [wrf_mole_fractions.isel(bottom_top=3), lpdm_mole_fractions],
+        [
+            wrf_mole_fractions.isel(bottom_top=3).rename(Time="observation_time"),
+            lpdm_mole_fractions.isel(emissions_zdim=0),
+        ],
         dim=pd.Index(["WRF", "LPDM"], name="model"),
     )
+
     for tracer_name in combined_mole_fractions.data_vars:
         tracer_num = int(tracer_name.split("_")[1])
-        grid = combined_mole_fractions[tracer_name].plot(
-            x="obs_time", col="site", hue="model", col_wrap=5
-        )
-        grid.fig.suptitle(
+        if tracer_num == 1:
+            wrf_background = 400
+        elif tracer_num in range(2, 12 + 1):
+            wrf_background = 300
+        else:
+            wrf_background = 0
+        fig, axes = plt.subplots(7, 5, figsize=(9, 6.5), sharex=True, sharey=True)
+        fig.autofmt_xdate()
+        fig.subplots_adjust(top=0.96, bottom=0.1, left=0.1, right=0.95, hspace=0.6)
+        fig.suptitle(
             "WRF and LPDM mole fractions for {0:04d}-{1:02d}\nTracer {2:d}".format(
                 year, month, tracer_num
             )
         )
-        grid.fig.savefig(
-            "wrf-lpdm-mole-fraction-comparison-{0:04d}-{1:02d}-tracer-{2:d}.pdf".format(
+        for ax in axes.flat:
+            ax.set_visible(False)
+        for site, ax in zip(
+            combined_mole_fractions.coords["site"].values[::-1], axes.flat[::-1]
+        ):
+            ax.set_visible(True)
+            # combined_mole_fractions[tracer_name].sel(site=site).plot.line(
+            #     x="observation_time", hue="model", ax=ax
+            # )
+            wrf_line = ax.plot(
+                combined_mole_fractions.coords["observation_time"].values,
+                combined_mole_fractions[tracer_name].sel(model="WRF", site=site).values
+                - wrf_background,
+            )[0]
+            lpdm_line = ax.plot(
+                combined_mole_fractions.coords["observation_time"].values,
+                combined_mole_fractions[tracer_name].sel(model="LPDM", site=site).values
+                / 1000,
+            )[0]
+            ax.set_title(site.decode("utf8"))
+            ax.set_xticks(
+                mdates.date2num(
+                    pd.date_range(
+                        datetime.datetime(year, month, 1),
+                        datetime.datetime(year, month + 1, 1),
+                        freq="7D",
+                    ).values
+                )
+            )
+        for ax in axes[:, 0]:
+            ax.set_ylabel("CO\N{SUBSCRIPT TWO} tracer\n(ppm)")
+        fig.legend([wrf_line, lpdm_line], ["WRF", "LPDM"], loc="upper left")
+        fig.savefig(
+            "wrf-lpdm-mole-fraction-comparison-{0:03d}-{1:02d}-tracer-{2:d}.pdf".format(
                 year, month, tracer_num
             )
         )
-    return grid.fig
+        fig.savefig(
+            "wrf-lpdm-mole-fraction-comparison-{0:03d}-{1:02d}-tracer-{2:d}.png".format(
+                year, month, tracer_num
+            )
+        )
+        plt.close(fig)
+    return
 
 
 def save_nonsparse_netcdf(ds_to_save, save_name):
@@ -638,9 +696,9 @@ if __name__ == "__main__":
     _LOGGER.info("Have LPDM mole fractions")
     lpdm_mole_fractions = lpdm_mole_fractions.load()
     _LOGGER.info("Loaded LPDM mole fractions")
-    # fig = compare_wrf_lpdm_mole_fractions_for_month(
-    #     wrf_mole_fractions, lpdm_mole_fractions, args.year, args.month
-    # )
+    fig = compare_wrf_lpdm_mole_fractions_for_month(
+        wrf_mole_fractions, lpdm_mole_fractions, args.year, args.month
+    )
     save_nonsparse_netcdf(
         wrf_fluxes,
         os.path.join(
