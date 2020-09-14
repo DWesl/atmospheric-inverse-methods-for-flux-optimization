@@ -50,6 +50,9 @@ UTC = dateutil.tz.tzutc()
 
 # Global unit registry
 UREG = pint.UnitRegistry()
+UREG.define("[mole fraction] = [number] / [number]")
+UREG.define("ppm = micromole / mole")
+UREG.define("@alias ppm = ppmv")
 
 FLUX_INTERVAL = 3
 """The interval at which fluxes become available in hours.
