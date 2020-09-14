@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import netCDF4
 import pandas as pd
+import pint
 import pyproj
 import sparse
 import xarray
@@ -46,6 +47,9 @@ SECONDS_PER_HOUR = 3600
 HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
 UTC = dateutil.tz.tzutc()
+
+# Global unit registry
+UREG = pint.UnitRegistry()
 
 FLUX_INTERVAL = 3
 """The interval at which fluxes become available in hours.
@@ -320,6 +324,8 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         datetime.datetime.utcnow().isoformat(), influence_datasets[0].attrs["history"]
     )
     aligned_influence.attrs["file_list"] = " ".join(influence_files)
+    aligned_influence.attrs.update(influence_datasets[0].attrs)
+    aligned_influence["H"].attrs.update(influence_datasets[0]["H"].attrs)
     return aligned_influence
 
 
@@ -442,6 +448,7 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
         flux_datasets[0].attrs.get("history", ""),
     )
     flux_dataset.attrs["file_list"] = " ".join(wrf_output_files)
+    _LOGGER.debug("Returned flux dataset:\n%s", flux_dataset)
     return flux_dataset
 
 
@@ -524,27 +531,29 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
         _LOGGER.debug(
             "Fluxes to convolve:\n%s", fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
         )
-        result["tracer_{i:d}".format(i=i + 1)] = lpdm_footprint["H"].dot(
-            fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
-        )
-        # # I really don't understand why this crashes
+        here_fluxes = fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
+        result["tracer_{i:d}".format(i=i + 1)] = lpdm_footprint["H"].dot(here_fluxes)
+        # I really don't understand why this crashes
         # TODO: fix crashes in code below
-        # result["tracer_{i:d}".format(i=i + 1)].attrs.update(
-        #     {
-        #         "standard_name": "carbon_dioxide_mole_fraction",
-        #         "long_name": (
-        #             "carbon_dioxide_mole_fraction_enhancement_tracer_{0:d}".format(
-        #                 i + 1
-        #             )
-        #         ),
-        #         "units": "ppm",
-        #         "description": (
-        #             "CO2 mole fractions predicted by LPDM for tracer {0:d}".format(
-        #                 i + 1
-        #             )
-        #         ),
-        #     }
-        # )
+        result["tracer_{i:d}".format(i=i + 1)].attrs.update(
+            {
+                "standard_name": "carbon_dioxide_mole_fraction",
+                "long_name": (
+                    "carbon_dioxide_mole_fraction_enhancement_tracer_{0:d}".format(
+                        i + 1
+                    )
+                ),
+                "units": str(
+                    UREG(lpdm_footprint["H"].attrs["units"])
+                    * UREG(here_fluxes.attrs["units"])
+                ),
+                "description": (
+                    "CO2 mole fractions predicted by LPDM for tracer {0:d}".format(
+                        i + 1
+                    )
+                ),
+            }
+        )
     return result
 
 
@@ -562,7 +571,7 @@ def compare_wrf_lpdm_mole_fractions_for_month(
     combined_mole_fractions = xarray.concat(
         [
             wrf_mole_fractions.isel(bottom_top=5).rename(Time="observation_time"),
-            lpdm_mole_fractions.isel(emissions_zdim=0),
+            lpdm_mole_fractions,
         ],
         dim=pd.Index(["WRF", "LPDM"], name="model"),
     )
@@ -702,6 +711,9 @@ if __name__ == "__main__":
     _LOGGER.info("Have WRF mole fractions")
     wrf_mole_fractions = wrf_mole_fractions.load()
     _LOGGER.info("Loaded WRF mole fractions")
+    _LOGGER.debug("About to load influence functions")
+    lpdm_footprint = lpdm_footprint.persist()
+    _LOGGER.info("Loaded influence functions")
     lpdm_mole_fractions = lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes)
     _LOGGER.info("Have LPDM mole fractions")
     lpdm_mole_fractions = lpdm_mole_fractions.load()
