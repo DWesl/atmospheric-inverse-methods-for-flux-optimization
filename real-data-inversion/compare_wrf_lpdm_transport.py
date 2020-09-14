@@ -195,7 +195,7 @@ def read_wrf_file(wrf_name):
         "XLAT",
         "XLONG",
     ):
-        wrf_ds.coords[coord_name] = wrf_ds.coords[coord_name].isel(Time=0).sum("Time")
+        wrf_ds.coords[coord_name] = wrf_ds.coords[coord_name].isel(Time=0)
     wrf_ds.coords["height_agl"] = height_agl
     wrf_ds.coords["wrf_proj"] = -1
     wrf_ds.coords["wrf_proj"].attrs.update(height_agl.attrs["projection"].cf())
