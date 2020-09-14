@@ -163,7 +163,7 @@ def read_wrf_file(wrf_name):
     with netCDF4.Dataset(wrf_name, "r") as wrf_nc:
         height_agl = wrf.getvar(wrf_nc, "height_agl", squeeze=False)
         time = wrf.getvar(wrf_nc, "times")
-    wrf_ds = xarray.open_dataset(wrf_name, {"Time": 1}).set_coords(
+    wrf_ds = xarray.open_dataset(wrf_name, chunks={"Time": 1}).set_coords(
         [
             # Dim coords
             "ZNU",
@@ -363,7 +363,7 @@ def save_sparse_influences(lpdm_footprint, save_name):
         ("H_coo_nnz",),
         np.ravel_multi_index(sparse_infl_fun.coords, lpdm_footprint["H"].shape),
         {
-            "compress": " ".join(lpdm_footprint["H"].dims),
+            "compress": " ".join(str(dim) for dim in lpdm_footprint["H"].dims),
             "description": "Indices of nonzero values in flattened array",
         },
     )
@@ -423,7 +423,9 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
     for name in wrf_output_files:
         _LOGGER.debug("Reading fluxes from file %s", name)
         wrf_ds = read_wrf_file(name)
-        flux_names = [name for name in wrf_ds.data_vars if name.startswith("E_TRA")]
+        flux_names = [
+            name for name in wrf_ds.data_vars if str(name).startswith("E_TRA")
+        ]
         flux_datasets.append(wrf_ds[flux_names])
     _LOGGER.debug("Combining fluxes into single dataset")
     flux_dataset = xarray.concat(flux_datasets, dim="Time")
@@ -484,7 +486,7 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
     for name in wrf_output_files:
         wrf_ds = read_wrf_file(name)
         mole_fraction_names = [
-            name for name in wrf_ds.data_vars if name.startswith("tracer_")
+            name for name in wrf_ds.data_vars if str(name).startswith("tracer_")
         ]
         mole_fraction_fields = wrf_ds[mole_fraction_names]
         wrf_mole_fractions.append(
@@ -621,11 +623,12 @@ def compare_wrf_lpdm_mole_fractions_for_month(
                 year, month, tracer_num
             )
         )
-        fig.savefig(
-            "wrf-lpdm-mole-fraction-comparison-{0:03d}-{1:02d}-tracer-{2:d}.png".format(
-                year, month, tracer_num
-            )
-        )
+        # PNG is slightly bigger.  Saving as 4-color would help, if I know how.
+        # fig.savefig(
+        #     "wrf-lpdm-mole-fraction-comparison-{0:03d}-{1:02d}-tracer-{2:d}.png".format(
+        #         year, month, tracer_num
+        #     )
+        # )
         plt.close(fig)
     return
 
