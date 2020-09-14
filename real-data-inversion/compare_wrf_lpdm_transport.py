@@ -16,6 +16,7 @@ import dateutil.tz
 import numpy as np
 import netCDF4
 import pandas as pd
+import pyproj
 import sparse
 import xarray
 import wrf
@@ -142,8 +143,8 @@ def make_sparse_ds(lpdm_footprint_ds):
     return lpdm_footprint_ds
 
 
-def set_wrf_coords(wrf_ds):
-    # type: (xarray.Dataset) -> xarray.Dataset
+def read_wrf_file(wrf_name):
+    # type: (str) -> xarray.Dataset
     """Set coordinates on the WRF dataset.
 
     Which variables I set as coordinates is chosen mostly by personal
@@ -151,13 +152,15 @@ def set_wrf_coords(wrf_ds):
 
     Parameters
     ----------
-    wrf_ds: xarray.Dataset
+    wrf_name: str
 
     Returns
     -------
     wrf_ds
     """
-    wrf_ds = wrf_ds.set_coords(
+    with netCDF4.Dataset(wrf_name, "r") as wrf_nc:
+        height_agl = wrf.getvar(wrf_nc, "height_agl", squeeze=False)
+    wrf_ds = xarray.open_dataset(wrf_name, {"Time": 1}).set_coords(
         [
             # Dim coords
             "ZNU",
@@ -190,6 +193,13 @@ def set_wrf_coords(wrf_ds):
         "XLONG",
     ):
         wrf_ds.coords[coord_name] = wrf_ds.coords[coord_name].isel(Time=0).sum("Time")
+    wrf_ds.coords["height_agl"] = height_agl
+    wrf_ds.coords["wrf_proj"] = -1
+    wrf_ds.coords["wrf_proj"].attrs.update(height_agl.attrs["projection"].cf())
+    wrf_ds.coords["wrf_proj"].attrs["wkt"] = pyproj.Proj(
+        **height_agl.attrs["projection"].cartopy().proj4_params
+    ).crs.to_wkt()
+    del height_agl.attrs["projection"]
     return wrf_ds
 
 
@@ -404,7 +414,7 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
     flux_datasets = []
     for name in wrf_output_files:
         _LOGGER.debug("Reading fluxes from file %s", name)
-        wrf_ds = set_wrf_coords(xarray.open_dataset(name, chunks={"Time": 1}))
+        wrf_ds = read_wrf_file(name)
         flux_names = [name for name in wrf_ds.data_vars if name.startswith("E_TRA")]
         flux_datasets.append(wrf_ds[flux_names])
     _LOGGER.debug("Combining fluxes into single dataset")
@@ -464,9 +474,7 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
     # south_index.coords["idx"] = tower_locs.coords["site"]
     wrf_mole_fractions = []
     for name in wrf_output_files:
-        wrf_ds = set_wrf_coords(
-            xarray.open_dataset(name, chunks={"Time": 1, "south_north": 65})
-        )
+        wrf_ds = read_wrf_file(name)
         mole_fraction_names = [
             name for name in wrf_ds.data_vars if name.startswith("tracer_")
         ]
@@ -537,13 +545,13 @@ def compare_wrf_lpdm_mole_fractions_for_month(
     year, month: int
     """
     combined_mole_fractions = xarray.concat(
-        [wrf_mole_fractions.isel(bottom_top=5), lpdm_mole_fractions],
+        [wrf_mole_fractions.isel(bottom_top=3), lpdm_mole_fractions],
         dim=pd.Index(["WRF", "LPDM"], name="model"),
     )
     for tracer_name in combined_mole_fractions.data_vars:
         tracer_num = int(tracer_name.split("_")[1])
         grid = combined_mole_fractions[tracer_name].plot(
-            x="obs_time", col="site", col_wrap=5
+            x="obs_time", col="site", hue="model", col_wrap=5
         )
         grid.fig.suptitle(
             "WRF and LPDM mole fractions for {0:04d}-{1:02d}\nTracer {2:d}".format(
