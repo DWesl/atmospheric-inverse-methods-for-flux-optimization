@@ -185,17 +185,18 @@ def read_wrf_file(wrf_name):
             "PB",
         ]
     )
-    # These variables don't change in static nesting scenarios
-    for coord_name in (
-        "ZNU",
-        "ZNW",
-        "ZS",
-        "P_TOP",
-        "HGT",
-        "XLAT",
-        "XLONG",
-    ):
-        wrf_ds.coords[coord_name] = wrf_ds.coords[coord_name].isel(Time=0)
+    # Some fraction of these don't have time as a dim to start with.
+    # # These variables don't change in static nesting scenarios
+    # for coord_name in (
+    #     "ZNU",
+    #     "ZNW",
+    #     "ZS",
+    #     "P_TOP",
+    #     "HGT",
+    #     "XLAT",
+    #     "XLONG",
+    # ):
+    #     wrf_ds.coords[coord_name] = wrf_ds.coords[coord_name].isel(Time=0)
     wrf_ds.coords["height_agl"] = height_agl
     wrf_ds.coords["wrf_proj"] = -1
     wrf_ds.coords["wrf_proj"].attrs.update(height_agl.attrs["projection"].cf())
