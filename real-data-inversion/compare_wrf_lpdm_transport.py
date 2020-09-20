@@ -11,6 +11,7 @@ import datetime
 import logging
 import os.path
 
+import cf_units
 import dask.config as dask_conf
 import dateutil.tz
 import matplotlib.dates as mdates
@@ -78,6 +79,8 @@ FLUX_RESOLUTION = 27
 """Resolution of fluxes and influence functions in kilometers."""
 N_GROUPS = 6
 """Number of groups of towers LPDM runs."""
+FLUX_UNITS = "mole/meter^2/second"
+"""Flux units assumed by influence functions."""
 
 
 def make_sparse_ds(lpdm_footprint_ds):
@@ -439,6 +442,12 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
         flux_datasets.append(wrf_ds[flux_names])
     _LOGGER.debug("Combining fluxes into single dataset")
     flux_dataset = xarray.concat(flux_datasets, dim="Time")
+    for name in flux_names:
+        flux_dataset[name] = (
+            flux_dataset[name] *
+            cf_units.Unit(flux_dataset[name].attrs["units"]).convert(1, FLUX_UNITS)
+        )
+        flux_dataset[name].attrs["units"] = FLUX_UNITS
     flux_dataset.coords["Time"] = (
         ("Time",),
         flux_time_index,
