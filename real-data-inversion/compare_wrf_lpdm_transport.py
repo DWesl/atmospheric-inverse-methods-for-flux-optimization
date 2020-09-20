@@ -312,7 +312,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     ).to_dataset()
     _LOGGER.debug("Rechunking aligned dataset")
     aligned_influence = aligned_influence.chunk(
-        {"flux_time": 8, "observation_time": 24}
+        {"flux_time": 8, "observation_time": 24, "site": 6}
     )
     _LOGGER.debug("Adding bounds and coords to influence functions")
     for bound_name in (
