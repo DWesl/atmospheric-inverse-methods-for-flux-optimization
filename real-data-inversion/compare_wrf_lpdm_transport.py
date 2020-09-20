@@ -325,7 +325,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         "lpdm_configuration",
         "wrf_configuration",
     ):
-        aligned_influence[bound_name] = influence_dataset[bound_name]
+        aligned_influence.coords[bound_name] = influence_dataset[bound_name]
     aligned_influence.attrs["history"] = (
         "{0:s}: Influence functions for a month aligned on flux time and "
         "combined into one file\n{1:s}"
