@@ -547,6 +547,9 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
     fluxes_matched = wrf_fluxes.rename(
         Time="flux_time", west_east="dim_x", south_north="dim_y"
     ).sum("emissions_zdim")
+    flux_index = lpdm_footprint.indexes["flux_time"]
+    if len(flux_index) % 8 != 0 and fluxes_matched.dims["flux_time"] % 8 == 0:
+        flux_index = fluxes_matched.indexes["flux_time"]
     result = xarray.Dataset()
     for i in range(len(wrf_fluxes.data_vars)):
         _LOGGER.debug("Influence function to convolve:\n%s", lpdm_footprint["H"])
@@ -554,7 +557,11 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
             "Fluxes to convolve:\n%s", fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
         )
         here_fluxes = fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
-        result["tracer_{i:d}".format(i=i + 1)] = lpdm_footprint["H"].dot(here_fluxes)
+        result["tracer_{i:d}".format(i=i + 1)] = (
+            lpdm_footprint["H"]
+            .sel(flux_time=flux_index)
+            .dot(here_fluxes.sel(flux_time=flux_index))
+        )
         # I really don't understand why this crashes
         # TODO: fix crashes in code below
         result["tracer_{i:d}".format(i=i + 1)].attrs.update(
