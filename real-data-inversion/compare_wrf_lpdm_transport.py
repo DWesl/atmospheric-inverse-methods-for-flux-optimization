@@ -276,7 +276,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     _LOGGER.debug("Alphabetizing towers in influence functions")
     influence_dataset = influence_dataset.reindex(
         observation_time=sorted(influence_dataset.indexes["observation_time"]),
-        site=sorted(influence_dataset.indexes["site"])
+        site=sorted(influence_dataset.indexes["site"]),
     )
     _LOGGER.debug("Influence dataset:\n%s", influence_dataset)
     _LOGGER.debug("Aligning influence functions on flux time")
@@ -454,10 +454,9 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
     _LOGGER.debug("Combining fluxes into single dataset")
     flux_dataset = xarray.concat(flux_datasets, dim="Time")
     for name in flux_names:
-        flux_dataset[name] = (
-            flux_dataset[name] *
-            cf_units.Unit(flux_dataset[name].attrs["units"]).convert(1, FLUX_UNITS)
-        )
+        flux_dataset[name] = flux_dataset[name] * cf_units.Unit(
+            flux_dataset[name].attrs["units"]
+        ).convert(1, FLUX_UNITS)
         flux_dataset[name].attrs["units"] = FLUX_UNITS
     flux_dataset.coords["Time"] = (
         ("Time",),
@@ -631,7 +630,9 @@ def compare_wrf_lpdm_mole_fractions_for_month(
             )[0]
             lpdm_line = ax.plot(
                 combined_mole_fractions.coords["observation_time"].values,
-                combined_mole_fractions[tracer_name].sel(model="LPDM", site=site).values,
+                combined_mole_fractions[tracer_name]
+                .sel(model="LPDM", site=site)
+                .values,
             )[0]
             ax.set_title(site.decode("utf8"))
             ax.set_xticks(
