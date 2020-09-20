@@ -213,11 +213,13 @@ def read_wrf_file(wrf_name):
     wrf_ds.coords["wrf_proj"].attrs["wkt"] = pyproj.Proj(
         **height_agl.attrs["projection"].cartopy().proj4_params
     ).crs.to_wkt()
-    del height_agl.attrs["projection"]
+    for xr_obj in (height_agl, time, wrf_ds):
+        if "projection" in xr_obj.attrs:
+            del xr_obj.attrs["projection"]
     wrf_ds.coords["Time"] = (
         ("Time",),
         time.expand_dims("Time"),
-        {"standard_name": "time", "calendar": "standard"},
+        {"standard_name": "time"},
     )
     return wrf_ds
 
@@ -671,7 +673,17 @@ def save_nonsparse_netcdf(ds_to_save, save_name):
     encoding.update(
         {name: {"zlib": True, "_FillValue": None} for name in ds_to_save.coords}
     )
-    ds_to_save.to_netcdf(save_name, mode="w", format="NETCDF4", encoding=encoding)
+    if "projection" in ds_to_save.attrs:
+        del ds_to_save.attrs["projection"]
+    for name in ds_to_save.data_vars:
+        if "projection" in ds_to_save[name].attrs:
+            del ds_to_save[name].attrs["projection"]
+    for name in ds_to_save.coords:
+        if "projection" in ds_to_save.coords[name].attrs:
+            del ds_to_save.coords[name].attrs["projection"]
+    ds_to_save.to_netcdf(
+        save_name, mode="w", format="NETCDF4", encoding=encoding, engine="h5netcdf"
+    )
 
 
 def existing_directory(path):
