@@ -623,8 +623,7 @@ def compare_wrf_lpdm_mole_fractions_for_month(
             )[0]
             lpdm_line = ax.plot(
                 combined_mole_fractions.coords["observation_time"].values,
-                combined_mole_fractions[tracer_name].sel(model="LPDM", site=site).values
-                / 1000,
+                combined_mole_fractions[tracer_name].sel(model="LPDM", site=site).values,
             )[0]
             ax.set_title(site.decode("utf8"))
             ax.set_xticks(
