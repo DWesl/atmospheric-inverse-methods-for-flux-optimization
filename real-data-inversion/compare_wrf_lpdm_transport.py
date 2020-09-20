@@ -275,6 +275,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     )
     _LOGGER.debug("Alphabetizing towers in influence functions")
     influence_dataset = influence_dataset.reindex(
+        observation_time=sorted(influence_dataset.indexes["observation_time"]),
         site=sorted(influence_dataset.indexes["site"])
     )
     _LOGGER.debug("Influence dataset:\n%s", influence_dataset)
