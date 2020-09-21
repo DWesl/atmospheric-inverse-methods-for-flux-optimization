@@ -281,24 +281,24 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     _LOGGER.debug("Influence dataset:\n%s", influence_dataset)
     _LOGGER.debug("Aligning influence functions on flux time")
     obs_time_index = influence_dataset.indexes["observation_time"]
-    first_obs_time = min(obs_time_index)
-    last_obs_time = max(obs_time_index)
-    flux_start = (
-        first_obs_time - max(influence_dataset.indexes["time_before_observation"])
-    ).replace(hour=0)
-    if last_obs_time.hour != 0:
-        flux_end = last_obs_time.replace(hour=0) + datetime.timedelta(days=1)
-    else:
-        flux_end = last_obs_time
-    flux_time_index = pd.date_range(
-        flux_start,
-        flux_end,
-        freq="{flux_interval:d}H".format(flux_interval=FLUX_INTERVAL),
-        tz="UTC",
-        closed="right",
-        name="flux_time",
-    )
-    # flux_time_index = flux_time_index[:len(flux_time_index) // 8 * 8]
+    # first_obs_time = min(obs_time_index)
+    # last_obs_time = max(obs_time_index)
+    # flux_start = (
+    #     first_obs_time - max(influence_dataset.indexes["time_before_observation"])
+    # ).replace(hour=0)
+    # if last_obs_time.hour != 0:
+    #     flux_end = last_obs_time.replace(hour=0) + datetime.timedelta(days=1)
+    # else:
+    #     flux_end = last_obs_time
+    # flux_time_index = pd.date_range(
+    #     flux_start,
+    #     flux_end,
+    #     freq="{flux_interval:d}H".format(flux_interval=FLUX_INTERVAL),
+    #     tz="UTC",
+    #     closed="right",
+    #     name="flux_time",
+    # )
+    # # flux_time_index = flux_time_index[:len(flux_time_index) // 8 * 8]
     aligned_influence = (
         xarray.concat(
             [
@@ -311,9 +311,8 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
             ],
             dim="observation_time",
             fill_value=np.array(0, dtype=influence_dataset["H"].dtype),
-        )
-        .to_dataset()
-        .reindex(flux_time=flux_time_index)
+        ).to_dataset()
+        # .reindex(flux_time=flux_time_index)
     )
     aligned_influence.coords["flux_time"] = aligned_influence.coords[
         "flux_time"
@@ -352,11 +351,11 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         {"flux_time": 8, "observation_time": 24, "site": 6}
     )
     _LOGGER.debug("Adding bounds and coords to influence functions")
-    aligned_influence.coords["flux_time"] = (
-        ("flux_time",),
-        flux_time_index,
-        {"standard_name": "time", "bounds": "flux_time_bounds"},
-    )
+    # aligned_influence.coords["flux_time"] = (
+    #     ("flux_time",),
+    #     flux_time_index,
+    #     {"standard_name": "time", "bounds": "flux_time_bounds"},
+    # )
     aligned_influence.coords["flux_time_bounds"] = (
         ("flux_time", "bnds2"),
         flux_time_bounds["flux_time_bnds"],
