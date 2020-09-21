@@ -315,20 +315,37 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         .to_dataset()
         .reindex(flux_time=flux_time_index)
     )
+    aligned_influence.coords["flux_time"] = aligned_influence.coords[
+        "flux_time"
+    ].astype("M8[ns]")
+    _LOGGER.debug("Creating flux time bounds variable")
+
+    def drop_observation_time_coord(ds):
+        # type: (xarray.DataArray) -> xarray.DataArray
+        """Drop obs time coordinate."""
+        del ds.coords["observation_time"]
+        return ds
+
     flux_time_bounds = xarray.merge(
         [
-            influence_datasets[0]["flux_time_bnds"]
-            .isel(observation_time=i)
+            drop_observation_time_coord(
+                influence_datasets[0]["flux_time_bnds"].isel(observation_time=i)
+            )
             .set_index(time_before_observation="flux_time")
             .rename({"time_before_observation": "flux_time"})
             for i in range(len(obs_time_index))
         ],
-        compat="override",
+        compat="no_conflicts",
         join="outer",
         combine_attrs="override",
-    ).reindex(flux_time=flux_time_index)
-    flux_time_bounds["flux_time"] = flux_time_bounds.coords["flux_time"].astype(
+    )  # .reindex(flux_time=flux_time_index)
+    flux_time_bounds.coords["flux_time"] = flux_time_bounds.coords["flux_time"].astype(
         "M8[ns]"
+    )
+    _LOGGER.debug(
+        "Flux time bounds nnz:\n%s\nValues:\n%s",
+        flux_time_bounds["flux_time_bnds"].count().load(),
+        flux_time_bounds["flux_time_bnds"],
     )
     _LOGGER.debug("Rechunking aligned dataset")
     aligned_influence = aligned_influence.chunk(
@@ -386,6 +403,9 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
             )
         }
     )
+    aligned_influence.coords["flux_time"] = aligned_influence.coords[
+        "flux_time"
+    ].astype("M8[ns]")
     _LOGGER.debug("Returned influence functions:\n%s", aligned_influence)
     return aligned_influence
 
