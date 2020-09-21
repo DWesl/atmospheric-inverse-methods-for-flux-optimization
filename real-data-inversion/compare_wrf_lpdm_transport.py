@@ -620,7 +620,8 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
         # More relevant if I have a covariance, but whatever.
         flux_index = fluxes_matched.coords["flux_time"]
     _LOGGER.debug("Flux time index for convolution:\n%s", flux_index)
-    _LOGGER.debug("Influence function to convolve:\n%s", lpdm_footprint["H"])
+    here_footprint = lpdm_footprint["H"].sel(flux_time=flux_index)
+    _LOGGER.debug("Influence function to convolve:\n%s", here_footprint)
     # result = (
     #     lpdm_footprint["H"]
     #     .sel(flux_time=flux_index)
@@ -628,7 +629,7 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
     # )
     result = xarray.Dataset()
     for i in range(len(wrf_fluxes.data_vars)):
-        here_fluxes = fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
+        here_fluxes = fluxes_matched["E_TRA{i:d}".format(i=i + 1)].sel(flux_time=flux_index)
         _LOGGER.debug("Fluxes to convolve:\n%s", here_fluxes)
         # result["tracer_{i:d}".format(i=i + 1)] = (
         #     lpdm_footprint["H"]
@@ -638,13 +639,13 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
         result["tracer_{i:d}".format(i=i + 1)] = (
             ("observation_time", "site"),
             da.tensordot(
-                lpdm_footprint["H"].sel(flux_time=flux_index).data,
-                here_fluxes.sel(flux_time=flux_index).data,
-                axes=2,
+                here_footprint.data,
+                here_fluxes.data,
+                axes=3,
             ),
-        # # I really don't understand why this crashes
-        # # TODO: fix crashes in code below
-        # result["tracer_{i:d}".format(i=i + 1)].attrs.update(
+            # # I really don't understand why this crashes
+            # # TODO: fix crashes in code below
+            # result["tracer_{i:d}".format(i=i + 1)].attrs.update(
             {
                 "standard_name": "carbon_dioxide_mole_fraction",
                 "long_name": (
