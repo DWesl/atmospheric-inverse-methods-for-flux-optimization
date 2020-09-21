@@ -13,6 +13,7 @@ import os.path
 
 import cf_units
 import dask.config as dask_conf
+import dask.array as da
 import dateutil.tz
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
