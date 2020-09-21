@@ -395,13 +395,13 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     aligned_influence.attrs.update(influence_datasets[0].attrs)
     aligned_influence["H"].attrs.update(influence_datasets[0]["H"].attrs)
     _LOGGER.debug("Making influence functions sparse")
-    # aligned_influence = aligned_influence.copy(
-    #     data={
-    #         "H": aligned_influence["H"].data.map_blocks(
-    #             sparse.COO, dtype=aligned_influence["H"].dtype
-    #         )
-    #     }
-    # )
+    aligned_influence = aligned_influence.copy(
+        data={
+            "H": aligned_influence["H"].data.map_blocks(
+                sparse.COO, dtype=aligned_influence["H"].dtype
+            )
+        }
+    )
     aligned_influence.coords["flux_time"] = aligned_influence.coords[
         "flux_time"
     ].astype("M8[ns]")
@@ -616,21 +616,33 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
         # More relevant if I have a covariance, but whatever.
         flux_index = fluxes_matched.coords["flux_time"]
     _LOGGER.debug("Flux time index for convolution:\n%s", flux_index)
+    _LOGGER.debug("Influence function to convolve:\n%s", lpdm_footprint["H"])
+    # result = (
+    #     lpdm_footprint["H"]
+    #     .sel(flux_time=flux_index)
+    #     .dot(fluxes_matched)
+    # )
     result = xarray.Dataset()
     for i in range(len(wrf_fluxes.data_vars)):
-        _LOGGER.debug("Influence function to convolve:\n%s", lpdm_footprint["H"])
-        _LOGGER.debug(
-            "Fluxes to convolve:\n%s", fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
-        )
         here_fluxes = fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
-        result["tracer_{i:d}".format(i=i + 1)] = (
-            lpdm_footprint["H"]
-            .sel(flux_time=flux_index)
-            .dot(here_fluxes.sel(flux_time=flux_index))
+        _LOGGER.debug(
+            "Fluxes to convolve:\n%s", here_fluxes
         )
-        # I really don't understand why this crashes
-        # TODO: fix crashes in code below
-        result["tracer_{i:d}".format(i=i + 1)].attrs.update(
+        # result["tracer_{i:d}".format(i=i + 1)] = (
+        #     lpdm_footprint["H"]
+        #     .sel(flux_time=flux_index)
+        #     .dot(here_fluxes.sel(flux_time=flux_index))
+        # )
+        result["tracer_{i:d}".format(i=i + 1)] = (
+            ("observation_time", "site"),
+            da.tensordot(
+                lpdm_footprint["H"].sel(flux_time=flux_index).data,
+                here_fluxes.sel(flux_time=flux_index).data,
+                axes=2,
+            ),
+        # # I really don't understand why this crashes
+        # # TODO: fix crashes in code below
+        # result["tracer_{i:d}".format(i=i + 1)].attrs.update(
             {
                 "standard_name": "carbon_dioxide_mole_fraction",
                 "long_name": (
@@ -807,6 +819,11 @@ if __name__ == "__main__":
     _LOGGER.debug("Command-line arguments: %s", args)
     lpdm_footprint = get_lpdm_footprint(args.lpdm_footprint_dir, args.year, args.month)
     _LOGGER.info("Footprints read")
+    # Crashes because this needs too much memory
+    # Currently sparse: we'll see how this works.
+    _LOGGER.debug("About to load influence functions")
+    lpdm_footprint = lpdm_footprint.persist()
+    _LOGGER.info("Loaded influence functions")
     lpdm_locs = get_lpdm_tower_locations(lpdm_footprint).load()
     _LOGGER.info("Have locations")
     wrf_fluxes = get_wrf_fluxes(args.wrf_output_dir, args.year, args.month)
