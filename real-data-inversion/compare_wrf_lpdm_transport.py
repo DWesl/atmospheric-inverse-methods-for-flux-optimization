@@ -273,6 +273,9 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         influence_datasets,
         dim="site",
     )
+    # influence_dataset.coords["site"] = np.char.decode(
+    #     influence_dataset.coords["site"].values, "ascii"
+    # )
     _LOGGER.debug("Alphabetizing towers in influence functions")
     influence_dataset = influence_dataset.reindex(
         observation_time=sorted(influence_dataset.indexes["observation_time"]),
