@@ -281,35 +281,40 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     _LOGGER.debug("Influence dataset:\n%s", influence_dataset)
     _LOGGER.debug("Aligning influence functions on flux time")
     obs_time_index = influence_dataset.indexes["observation_time"]
-    # first_obs_time = min(obs_time_index)
-    # last_obs_time = max(obs_time_index)
-    # flux_start = (
-    #     first_obs_time - max(influence_dataset.indexes["time_before_observation"])
-    # ).replace(hour=0)
-    # if last_obs_time.hour != 0:
-    #     flux_end = last_obs_time.replace(hour=0) + datetime.timedelta(days=1)
-    # else:
-    #     flux_end = last_obs_time
-    # flux_time_index = pd.date_range(
-    #     flux_start,
-    #     flux_end,
-    #     freq="{flux_interval:d}H".format(flux_interval=FLUX_INTERVAL),
-    #     tz="UTC",
-    #     closed="right",
-    #     name="flux_times",
-    # )
-    aligned_influence = xarray.concat(
-        [
-            influence_dataset["H"]
-            .isel(observation_time=i)
-            .set_index(time_before_observation="flux_time")
-            .rename({"time_before_observation": "flux_time"})
-            .astype(np.float32)
-            for i in range(len(obs_time_index))
-        ],
-        dim="observation_time",
-        fill_value=np.array(0, dtype=influence_dataset["H"].dtype),
-    ).to_dataset()
+    first_obs_time = min(obs_time_index)
+    last_obs_time = max(obs_time_index)
+    flux_start = (
+        first_obs_time - max(influence_dataset.indexes["time_before_observation"])
+    ).replace(hour=0)
+    if last_obs_time.hour != 0:
+        flux_end = last_obs_time.replace(hour=0) + datetime.timedelta(days=1)
+    else:
+        flux_end = last_obs_time
+    flux_time_index = pd.date_range(
+        flux_start,
+        flux_end,
+        freq="{flux_interval:d}H".format(flux_interval=FLUX_INTERVAL),
+        tz="UTC",
+        closed="right",
+        name="flux_times",
+    )
+    # flux_time_index = flux_time_index[:len(flux_time_index) // 8 * 8]
+    aligned_influence = (
+        xarray.concat(
+            [
+                influence_dataset["H"]
+                .isel(observation_time=i)
+                .set_index(time_before_observation="flux_time")
+                .rename({"time_before_observation": "flux_time"})
+                .astype(np.float32)
+                for i in range(len(obs_time_index))
+            ],
+            dim="observation_time",
+            fill_value=np.array(0, dtype=influence_dataset["H"].dtype),
+        )
+        .to_dataset()
+        .reindex(flux_time=flux_time_index)
+    )
     _LOGGER.debug("Rechunking aligned dataset")
     aligned_influence = aligned_influence.chunk(
         {"flux_time": 8, "observation_time": 24, "site": 6}
