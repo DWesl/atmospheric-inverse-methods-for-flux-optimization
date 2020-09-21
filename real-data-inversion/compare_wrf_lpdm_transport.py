@@ -558,9 +558,10 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
     """
     observation_time_index = pd.date_range(
         start=datetime.datetime(year, month, 1, 0, 0, 0),
+        # This will produce one more WRF obs time than LPDM has
         end=datetime.datetime(year, month + 1, 1, 0, 0),
         # The one place where OBS_WINDOW/OBSERVATION_WINDOW is
-        # relevant here
+        # relevant in this script
         freq="1H",
     )
     wrf_output_files = [
@@ -680,10 +681,21 @@ def compare_wrf_lpdm_mole_fractions_for_month(
     wrf_mole_fractions, lpdm_mole_fractions: xarray.Dataset
     year, month: int
     """
+    wrf_mole_fractions = wrf_mole_fractions.rename(Time="observation_time")
+    if (
+        wrf_mole_fractions.dims["observation_time"]
+        < lpdm_mole_fractions.dims["observation_time"]
+    ):
+        _LOGGER.debug("WRF has fewer obs times")
+        obs_time_index = wrf_mole_fractions.coords["observation_time"]
+    else:
+        _LOGGER.debug("LPDM has fewer obs times (or same)")
+        obs_time_index = lpdm_mole_fractions.coords["observation_time"]
+    _LOGGER.debug("Num obs times: %s", len(obs_time_index))
     combined_mole_fractions = xarray.concat(
         [
-            wrf_mole_fractions.isel(bottom_top=5).rename(Time="observation_time"),
-            lpdm_mole_fractions,
+            wrf_mole_fractions.isel(bottom_top=5).sel(observation_time=obs_time_index),
+            lpdm_mole_fractions.sel(observation_time=obs_time_index),
         ],
         dim=pd.Index(["WRF", "LPDM"], name="model"),
     )
