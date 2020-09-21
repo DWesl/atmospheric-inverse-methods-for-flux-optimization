@@ -629,9 +629,7 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
     result = xarray.Dataset()
     for i in range(len(wrf_fluxes.data_vars)):
         here_fluxes = fluxes_matched["E_TRA{i:d}".format(i=i + 1)]
-        _LOGGER.debug(
-            "Fluxes to convolve:\n%s", here_fluxes
-        )
+        _LOGGER.debug("Fluxes to convolve:\n%s", here_fluxes)
         # result["tracer_{i:d}".format(i=i + 1)] = (
         #     lpdm_footprint["H"]
         #     .sel(flux_time=flux_index)
@@ -663,7 +661,7 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
                         i + 1
                     )
                 ),
-            }
+            },
         )
     return result
 
