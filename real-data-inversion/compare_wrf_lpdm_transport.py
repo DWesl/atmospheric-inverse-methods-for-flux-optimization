@@ -348,6 +348,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
             )
         }
     )
+    _LOGGER.debug("Returned influence functions:\n%s", aligned_influence)
     return aligned_influence
 
 
@@ -549,12 +550,15 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
     -------
     lpdm_mole_fractions: xarray.Dataset
     """
+    _LOGGER.debug("LPDM footprint dataset:\n%s", lpdm_footprint)
     fluxes_matched = wrf_fluxes.rename(
         Time="flux_time", west_east="dim_x", south_north="dim_y"
     ).sum("emissions_zdim")
     flux_index = lpdm_footprint.coords["flux_time"]
     if len(flux_index) % 8 != 0 and fluxes_matched.dims["flux_time"] % 8 == 0:
+        # More relevant if I have a covariance, but whatever.
         flux_index = fluxes_matched.coords["flux_time"]
+    _LOGGER.debug("Flux time index for convolution:\n%s", flux_index)
     result = xarray.Dataset()
     for i in range(len(wrf_fluxes.data_vars)):
         _LOGGER.debug("Influence function to convolve:\n%s", lpdm_footprint["H"])
