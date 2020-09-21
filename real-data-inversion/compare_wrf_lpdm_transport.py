@@ -395,13 +395,13 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     aligned_influence.attrs.update(influence_datasets[0].attrs)
     aligned_influence["H"].attrs.update(influence_datasets[0]["H"].attrs)
     _LOGGER.debug("Making influence functions sparse")
-    aligned_influence = aligned_influence.copy(
-        data={
-            "H": aligned_influence["H"].data.map_blocks(
-                sparse.COO, dtype=aligned_influence["H"].dtype
-            )
-        }
-    )
+    # aligned_influence = aligned_influence.copy(
+    #     data={
+    #         "H": aligned_influence["H"].data.map_blocks(
+    #             sparse.COO, dtype=aligned_influence["H"].dtype
+    #         )
+    #     }
+    # )
     aligned_influence.coords["flux_time"] = aligned_influence.coords[
         "flux_time"
     ].astype("M8[ns]")
