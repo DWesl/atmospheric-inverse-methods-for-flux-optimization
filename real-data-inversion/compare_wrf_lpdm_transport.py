@@ -28,7 +28,7 @@ import wrf
 TYPING = False
 if TYPING:
     import matplotlib as mpl
-    from typing import Dict, Any, Hashable
+    from typing import Dict, Any, Hashable, Tuple
 
 logging.basicConfig(
     format=(
@@ -368,7 +368,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         "height_bnds",
     ):
         if bound_name != "height_bnds":
-            dim_names = (bound_name.rsplit("_", 1)[0], "bnds2")
+            dim_names = (bound_name.rsplit("_", 1)[0], "bnds2")  # type: Tuple[str, ...]
         else:
             dim_names = ("bnds2",)
         aligned_influence.coords[bound_name] = (
@@ -512,7 +512,7 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
         _LOGGER.debug("Reading fluxes from file %s", name)
         wrf_ds = read_wrf_file(name)
         flux_names = [
-            name for name in wrf_ds.data_vars if str(name).startswith("E_TRA")
+            str(name) for name in wrf_ds.data_vars if str(name).startswith("E_TRA")
         ]
         flux_datasets.append(wrf_ds[flux_names])
     _LOGGER.debug("Combining fluxes into single dataset")
