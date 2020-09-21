@@ -296,7 +296,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         freq="{flux_interval:d}H".format(flux_interval=FLUX_INTERVAL),
         tz="UTC",
         closed="right",
-        name="flux_times",
+        name="flux_time",
     )
     # flux_time_index = flux_time_index[:len(flux_time_index) // 8 * 8]
     aligned_influence = (
@@ -320,17 +320,37 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         {"flux_time": 8, "observation_time": 24, "site": 6}
     )
     _LOGGER.debug("Adding bounds and coords to influence functions")
+    aligned_influence.coords["flux_time"] = (
+        ("flux_time",),
+        flux_time_index,
+        {"standard_name": "time"},
+    )
     for bound_name in (
         "observation_time_bnds",
         "dim_y_bnds",
         "dim_x_bnds",
-        "wrf_proj",
         "flux_time_bnds",
         "height_bnds",
+    ):
+        if bound_name != "height_bnds":
+            dim_names = (bound_name.rsplit("_", 1)[0], "bnds2")
+        else:
+            dim_names = ("bnds2",)
+        aligned_influence.coords[bound_name] = (
+            dim_names,
+            influence_datasets[0][bound_name],
+            influence_datasets[0][bound_name].attrs,
+        )
+    for coord_name in (
+        "wrf_proj",
         "lpdm_configuration",
         "wrf_configuration",
     ):
-        aligned_influence.coords[bound_name] = influence_dataset[bound_name]
+        aligned_influence.coords[coord_name] = (
+            (),
+            influence_datasets[0][coord_name],
+            influence_datasets[0][coord_name].attrs,
+        )
     aligned_influence.attrs["history"] = (
         "{0:s}: Influence functions for a month aligned on flux time and "
         "combined into one file\n{1:s}"
