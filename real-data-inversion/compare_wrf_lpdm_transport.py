@@ -315,6 +315,21 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         .to_dataset()
         .reindex(flux_time=flux_time_index)
     )
+    flux_time_bounds = xarray.merge(
+        [
+            influence_datasets[0]["flux_time_bnds"]
+            .isel(observation_time=i)
+            .set_index(time_before_observation="flux_time")
+            .rename({"time_before_observation": "flux_time"})
+            for i in range(len(obs_time_index))
+        ],
+        compat="override",
+        join="outer",
+        combine_attrs="override",
+    ).reindex(flux_time=flux_time_index)
+    flux_time_bounds["flux_time"] = flux_time_bounds.coords["flux_time"].astype(
+        "M8[ns]"
+    )
     _LOGGER.debug("Rechunking aligned dataset")
     aligned_influence = aligned_influence.chunk(
         {"flux_time": 8, "observation_time": 24, "site": 6}
@@ -323,13 +338,16 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     aligned_influence.coords["flux_time"] = (
         ("flux_time",),
         flux_time_index,
-        {"standard_name": "time"},
+        {"standard_name": "time", "bounds": "flux_time_bounds"},
+    )
+    aligned_influence.coords["flux_time_bounds"] = (
+        ("flux_time", "bnds2"),
+        flux_time_bounds["flux_time_bnds"],
     )
     for bound_name in (
         "observation_time_bnds",
         "dim_y_bnds",
         "dim_x_bnds",
-        "flux_time_bnds",
         "height_bnds",
     ):
         if bound_name != "height_bnds":
