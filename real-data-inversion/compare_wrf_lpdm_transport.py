@@ -266,9 +266,24 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     for name in influence_files:
         _LOGGER.debug("Reading influences from file %s", name)
         influence_datasets.append(
-            xarray.open_dataset(
-                name, chunks={"observation_time": 1, "site": 1}
-            ).set_index(site="site_names")
+            xarray.open_dataset(name, chunks={"observation_time": 1, "site": 1})
+            .set_index(site="site_names")
+            .set_coords(
+                [
+                    # Bounds
+                    "observation_time_bnds",
+                    "time_before_observation_bnds",
+                    "flux_time_bnds",
+                    "height_bnds",
+                    "dim_y_bnds",
+                    "dim_x_bnds",
+                    # Grid mapping
+                    "wrf_proj",
+                    # Configuration
+                    "lpdm_configuration",
+                    "wrf_configuration",
+                ]
+            )
             # .rename(site="site_names")
         )
         _LOGGER.debug("Done reading file %s", name)
@@ -333,15 +348,20 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
     ].astype("M8[ns]")
     _LOGGER.debug("Creating flux time bounds variable")
 
-    def drop_observation_time_coord(ds):
+    def drop_unneeded_coords(ds):
         # type: (xarray.DataArray) -> xarray.DataArray
         """Drop obs time coordinate."""
+        # Will have different values for each obs time
         del ds.coords["observation_time"]
+        del ds.coords["observation_time_bnds"]
+        del ds.coords["time_before_observation_bnds"]
+        # Having data var and coord with same name breaks merge
+        del ds.coords["flux_time_bnds"]
         return ds
 
     flux_time_bounds = xarray.merge(
         [
-            drop_observation_time_coord(
+            drop_unneeded_coords(
                 influence_datasets[0]["flux_time_bnds"].isel(observation_time=i)
             )
             .set_index(time_before_observation="flux_time")
