@@ -392,6 +392,8 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
             influence_datasets[0][coord_name],
             influence_datasets[0][coord_name].attrs,
         )
+    # CF and ACDD global attributes
+    aligned_influence.attrs.update(cf_acdd.global_attributes_dict())
     aligned_influence.attrs["history"] = (
         "{0:s}: Influence functions for a month aligned on flux time and "
         "combined into one file\n{1:s}"
@@ -540,6 +542,12 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
         flux_datasets[0].attrs.get("history", ""),
     )
     flux_dataset.attrs["file_list"] = " ".join(wrf_output_files)
+    # Adding CF and ACDD global attributes
+    old_history = flux_dataset.attrs.get("history", "")
+    flux_dataset.attrs.update(cf_acdd.global_attributes_dict())
+    flux_dataset.attrs["history"] = "\n".join(
+        [flux_dataset.attrs["history"], old_history]
+    )
     _LOGGER.debug("Returned flux dataset:\n%s", flux_dataset)
     return flux_dataset
 
@@ -598,6 +606,10 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
         result.coords[tower_coord_name] = tower_locs.coords[tower_coord_name]
     # Now redundant.
     del result.coords["latlon_coord"]
+    # Add global CF attributes
+    old_history = result.attrs.get("history", "")
+    result.attrs.update(cf_acdd.global_attributes_dict())
+    result.attrs["history"] = "\n".join([result.attrs["history"], old_history])
     _LOGGER.debug("WRF mole fractions: %s", result)
     return result
 
