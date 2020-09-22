@@ -860,9 +860,6 @@ if __name__ == "__main__":
     _LOGGER.info("Have LPDM mole fractions")
     lpdm_mole_fractions = lpdm_mole_fractions.load()
     _LOGGER.info("Loaded LPDM mole fractions")
-    fig = compare_wrf_lpdm_mole_fractions_for_month(
-        wrf_mole_fractions, lpdm_mole_fractions, args.year, args.month
-    )
     save_nonsparse_netcdf(
         wrf_fluxes,
         os.path.join(
@@ -911,6 +908,10 @@ if __name__ == "__main__":
         ),
     )
     _LOGGER.info("Saved LPDM mole fractions")
+    fig = compare_wrf_lpdm_mole_fractions_for_month(
+        wrf_mole_fractions, lpdm_mole_fractions, args.year, args.month
+    )
+    _LOGGER.info("Plotted WRF and LPDM mole fractions")
     # save_sparse_influences(
     #     lpdm_footprint,
     #     os.path.join(
@@ -943,3 +944,4 @@ if __name__ == "__main__":
     #     ),
     # )
     # _LOGGER.info("Saved aligned footprint (dense)")
+    _LOGGER.info("Done, exiting")
