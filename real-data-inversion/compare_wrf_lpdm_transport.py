@@ -682,15 +682,17 @@ def compare_wrf_lpdm_mole_fractions_for_month(
     year, month: int
     """
     wrf_mole_fractions = wrf_mole_fractions.rename(Time="observation_time")
-    if (
-        wrf_mole_fractions.dims["observation_time"]
-        < lpdm_mole_fractions.dims["observation_time"]
-    ):
-        _LOGGER.debug("WRF has fewer obs times")
-        obs_time_index = wrf_mole_fractions.coords["observation_time"]
-    else:
-        _LOGGER.debug("LPDM has fewer obs times (or same)")
-        obs_time_index = lpdm_mole_fractions.coords["observation_time"]
+    wrf_obs_times = wrf_mole_fractions.coords["observation_time"]
+    lpdm_obs_times = lpdm_mole_fractions.coords["observation_time"]
+    obs_time_index = np.array(
+        pd.date_range(
+            max(min(wrf_obs_times), min(lpdm_obs_times)),
+            min(max(wrf_obs_times), max(lpdm_obs_times)),
+            # OBS_INTERVAL/OBS_FREQUENCY again
+            freq="1H",
+        ),
+        dtype="M8[ns]",
+    )
     _LOGGER.debug("Num obs times: %s", len(obs_time_index))
     combined_mole_fractions = xarray.concat(
         [
