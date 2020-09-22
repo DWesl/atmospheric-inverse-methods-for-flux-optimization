@@ -285,6 +285,13 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         observation_time=sorted(influence_dataset.indexes["observation_time"]),
         site=sorted(influence_dataset.indexes["site"]),
     )
+    influence_dataset = influence_dataset.copy(
+        data={
+            "H": influence_dataset["H"].data.map_blocks(
+                sparse.COO, dtype=influence_dataset["H"].dtype
+            )
+        }
+    )
     _LOGGER.debug("Influence dataset:\n%s", influence_dataset)
     _LOGGER.debug("Aligning influence functions on flux time")
     obs_time_index = influence_dataset.indexes["observation_time"]
