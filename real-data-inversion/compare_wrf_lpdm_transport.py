@@ -26,6 +26,8 @@ import sparse
 import xarray
 import wrf
 
+import cf_acdd
+
 TYPING = False
 if TYPING:
     import matplotlib as mpl
@@ -49,6 +51,7 @@ SECONDS_PER_HOUR = 3600
 HOURS_PER_DAY = 24
 DAYS_PER_WEEK = 7
 UTC = dateutil.tz.tzutc()
+NOW = datetime.datetime.now(UTC)
 
 # Global unit registry
 UREG = pint.UnitRegistry()
@@ -629,6 +632,14 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
     #     .dot(fluxes_matched)
     # )
     result = xarray.Dataset()
+    result.coords["observation_time"] = here_footprint.coords["observation_time"]
+    result.coords["site"] = here_footprint.coords["observation_time"]
+    result.coords["observation_time_bnds"] = lpdm_footprint.coords[
+        "observation_time_bnds"
+    ]
+    result.coords["date_written"] = NOW.date().isoformat()
+    result.coords["time_written"] = NOW.time().isoformat()
+    result.attrs.update(cf_acdd.global_attributes_dict())
     for i in range(len(wrf_fluxes.data_vars)):
         here_fluxes = fluxes_matched["E_TRA{i:d}".format(i=i + 1)].sel(
             flux_time=flux_index
