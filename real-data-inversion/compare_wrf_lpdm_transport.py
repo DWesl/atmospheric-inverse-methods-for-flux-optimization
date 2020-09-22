@@ -684,10 +684,13 @@ def compare_wrf_lpdm_mole_fractions_for_month(
     wrf_mole_fractions = wrf_mole_fractions.rename(Time="observation_time")
     wrf_obs_times = wrf_mole_fractions.coords["observation_time"]
     lpdm_obs_times = lpdm_mole_fractions.coords["observation_time"]
+    latest_start = max(min(wrf_obs_times), min(lpdm_obs_times)).astype("M8[ns]")
+    earliest_finish = min(max(wrf_obs_times), max(lpdm_obs_times)).astype("M8[ns]")
+    _LOGGER.debug("Obs time range: %s \N{EN DASH} %s", latest_start, earliest_finish)
     obs_time_index = np.array(
         pd.date_range(
-            max(min(wrf_obs_times), min(lpdm_obs_times)),
-            min(max(wrf_obs_times), max(lpdm_obs_times)),
+            latest_start,
+            earliest_finish,
             # OBS_INTERVAL/OBS_FREQUENCY again
             freq="1H",
         ),
