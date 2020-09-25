@@ -317,9 +317,9 @@ print(datetime.datetime.now(UTC).strftime("%c"),
       "Have all prior noise, chunking")
 flush_output_streams()
 
-encoding = {name: {"_FillValue": -1e38}
+encoding = {name: {"_FillValue": -1e38, "zlib": True}
             for name in osse_prior_dataset.data_vars}
-encoding.update({name: {"_FillValue": None}
+encoding.update({name: {"_FillValue": None, "zlib": True}
                  for name in osse_prior_dataset.coords})
 # osse_prior_dataset = osse_prior_dataset.chunk(
 #     dict(flux_time=FLUX_CHUNKS, dim_y=NY, dim_x=NX,

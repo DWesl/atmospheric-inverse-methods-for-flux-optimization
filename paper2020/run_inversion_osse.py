@@ -894,9 +894,9 @@ print(datetime.datetime.now(UTC).strftime("%c"),
       "Have posterior structure, evaluating and writing")
 flush_output_streams()
 
-encoding = {name: {"_FillValue": -99}
+encoding = {name: {"_FillValue": -99, "zlib": True}
             for name in posterior_ds.data_vars}
-encoding.update({name: {"_FillValue": None}
+encoding.update({name: {"_FillValue": None, "zlib": True}
                  for name in posterior_ds.coords})
 
 posterior_ds.to_netcdf(
@@ -1086,9 +1086,9 @@ posterior_covariance_ds.attrs.update(
          )
 )
 
-encoding = {name: {"_FillValue": -99}
+encoding = {name: {"_FillValue": -99, "zlib": True}
             for name in posterior_covariance_ds.data_vars}
-encoding.update({name: {"_FillValue": None}
+encoding.update({name: {"_FillValue": None, "zlib": True}
                  for name in posterior_covariance_ds.coords})
 
 posterior_covariance_ds.to_netcdf(
