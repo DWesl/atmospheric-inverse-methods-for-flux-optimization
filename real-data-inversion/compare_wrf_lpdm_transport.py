@@ -664,7 +664,7 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
     # )
     result = xarray.Dataset()
     result.coords["observation_time"] = here_footprint.coords["observation_time"]
-    result.coords["site"] = here_footprint.coords["observation_time"]
+    result.coords["site"] = here_footprint.coords["site"]
     result.coords["observation_time_bnds"] = lpdm_footprint.coords[
         "observation_time_bnds"
     ]
