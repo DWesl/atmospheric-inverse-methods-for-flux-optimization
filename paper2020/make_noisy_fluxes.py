@@ -37,7 +37,7 @@ from atmos_flux_inversion.covariances import CorrelationStandardDeviation
 from atmos_flux_inversion.noise import gaussian_noise
 import cf_acdd
 
-TRUE_FLUXES_DIR = "/mc1s2/s4/dfw5129/data/Marthas_2010_wrfouts"
+TRUE_FLUXES_DIR = os.path.join(THIS_DIR, "..", "data_dir")
 
 # dask.set_options(pool=multiprocessing.pool.ThreadPool(16))
 FLUX_INTERVAL = 6
@@ -245,7 +245,7 @@ flush_output_streams()
 # x5 for MsTMIP representing monthly fluxes, where I'm working with sub-daily
 FLUX_VARIANCE_VARYING_FRACTION = 2. * 5.
 flux_std_pattern = xarray.open_dataset(
-    "../data_files/2010_MsTMIP_flux_std.nc4", chunks=dict(Time=8 * 21)).get(
+    "../data_dir/2010_MsTMIP_flux_std.nc4", chunks=dict(Time=8 * 21)).get(
     ["E_TRA{:d}".format(i + 1) for i in range(1)])  # .isel(emissions_zdim=0)
 
 
@@ -327,7 +327,7 @@ print(datetime.datetime.now(UTC).strftime("%c"),
       "Noisy fluxes chunked, saving")
 flush_output_streams()
 osse_prior_dataset.to_netcdf(
-    "../data_files/2010-07_osse_bio_priors_{interval:d}h_{res:d}km"
+    "../data_dir/2010-07_osse_bio_priors_{interval:d}h_{res:d}km"
     "_noise_{sp_fun:s}{length:g}km_exp{day_time:d}d_exp{hour_time:d}h.nc"
     .format(
         interval=FLUX_INTERVAL, res=FLUX_RESOLUTION,

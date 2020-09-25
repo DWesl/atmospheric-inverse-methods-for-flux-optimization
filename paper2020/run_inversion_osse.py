@@ -41,12 +41,14 @@ from atmos_flux_inversion.linalg import asarray, kron
 from atmos_flux_inversion.noise import gaussian_noise
 import cf_acdd
 
-INFLUENCE_PATHS = ["/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
-                   "ACT-America_trial5/2010/01/GROUP1",
-                   "/mc1s2/s4/dfw5129/data/LPDM_2010_fpbounds/"
-                   "candidacy_more_towers/2010/01/GROUP1"]
-PRIOR_PATH = "/mc1s2/s4/dfw5129/inversion_code/data_files"
-OBS_PATH = "/mc1s2/s4/dfw5129/inversion"
+INFLUENCE_PATHS = [
+    "/nobackup/dwesloh/inversion/data_dir/LPDM Influence functions January 2010/"
+]
+print("Influence paths", INFLUENCE_PATHS)
+INFLUENCE_PATHS = [path for path in INFLUENCE_PATHS if os.path.exists(path)]
+print("Influence paths", INFLUENCE_PATHS)
+PRIOR_PATH = "/nobackup/dwesloh/inversion/data_dir"
+OBS_PATH = "/nobackup/dwesloh/inversion/data_dir/2010-0107_mole_fractions/"
 
 FLUX_INTERVAL = 6
 """The interval at which fluxes become available in hours.
@@ -107,7 +109,7 @@ INFLUENCE_FILES = [
     for path in INFLUENCE_PATHS
     for name in glob.glob(os.path.join(
         path,
-        "LPDM_2010_01_{flux_interval:02d}hrly_{res:03d}km_molar_footprints.nc4"
+        "LPDM_2010_01_{flux_interval:02d}hrly_{res:03d}km_molar_footprints_?tower.nc4"
         .format(flux_interval=FLUX_INTERVAL, res=FLUX_RESOLUTION)))]
 
 print("Flux files", FLUX_FILES)
@@ -658,7 +660,7 @@ write_progress_message("Have combined correlations")
 # x4 matches model-model for 1000km/7d
 FLUX_VARIANCE_VARYING_FRACTION = 4.
 flux_std_pattern = xarray.open_dataset(
-    "../data_files/2010_MsTMIP_flux_std.nc4",
+    "../data_dir/2010_MsTMIP_flux_std.nc4",
     engine=NC_ENGINE
 ).get(
     ["E_TRA{:d}".format(i + 1) for i in range(1)]
