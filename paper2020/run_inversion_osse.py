@@ -41,6 +41,10 @@ from atmos_flux_inversion.linalg import asarray, kron
 from atmos_flux_inversion.noise import gaussian_noise
 import cf_acdd
 
+TYPING = False
+if TYPING:
+    from typing import List, Tuple
+
 INFLUENCE_PATHS = [
     "/nobackup/dwesloh/inversion/data_dir/LPDM Influence functions January 2010/"
 ]
@@ -454,7 +458,7 @@ obs_times = (INFLUENCE_FUNCTIONS.indexes["observation_time"][::-1])
 # takes roughly 11 min.
 # Takes 6 min with everything in memory
 # Two minutes with big chunks?
-site_obs_index = []
+site_obs_index = []  # type: List[Tuple[int, str]]
 write_progress_message("Selecting observations")
 for i, site in enumerate(INFLUENCE_FUNCTIONS.indexes["site"]):
     if site in BAD_SITES:
@@ -471,7 +475,7 @@ for i, site in enumerate(INFLUENCE_FUNCTIONS.indexes["site"]):
         itertools.repeat(site)))
 obs_index, site_index = zip(*site_obs_index)
 site_index = np.array(list(site_index))
-pd_obs_index = obs_times[list(obs_index)]
+pd_obs_index = obs_times[list(obs_index)]  # type: np.ndarray
 site_obs_pd_index = pd.MultiIndex.from_tuples(
     list(zip(site_index, pd_obs_index)), names=("site", "observation_time"))
 
