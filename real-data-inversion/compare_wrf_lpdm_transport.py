@@ -760,6 +760,10 @@ def compare_wrf_lpdm_mole_fractions_for_month(
             wrf_background = 300
         else:
             wrf_background = 0
+        lpdm_scale = 1.0
+        if combined_mole_fractions[tracer_name].sel(model="LPDM").max().values < 1e-3:
+            _LOGGER.debug("LPDM %s mole fractions small.  Scaling up.", tracer_name)
+            lpdm_scale = 1e6
         fig, axes = plt.subplots(7, 5, figsize=(9, 6.5), sharex=True, sharey=True)
         fig.autofmt_xdate()
         fig.subplots_adjust(top=0.96, bottom=0.1, left=0.1, right=0.95, hspace=0.6)
@@ -784,7 +788,8 @@ def compare_wrf_lpdm_mole_fractions_for_month(
             )[0]
             lpdm_line = ax.plot(
                 combined_mole_fractions.coords["observation_time"].values,
-                combined_mole_fractions[tracer_name]
+                lpdm_scale
+                * combined_mole_fractions[tracer_name]
                 .sel(model="LPDM", site=site)
                 .values,
             )[0]
