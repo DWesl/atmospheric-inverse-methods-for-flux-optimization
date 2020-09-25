@@ -160,12 +160,13 @@ wrf_new_times = pd.DatetimeIndex(timestamps,
                                  name="XTIME")
 FLUX_DATASET.coords["Time"] = wrf_new_times
 
-FLUX_DATASET.set_index(XTIME="Time", inplace=True)
+FLUX_DATASET = FLUX_DATASET.set_index(XTIME="Time")
 FLUX_DATASET = FLUX_DATASET.rename(
     dict(
         XTIME="Time", projection_y_coordinate="south_north",
-        projection_x_coordinate="west_east"),
-    inplace=True)
+        projection_x_coordinate="west_east"
+    )
+)
 
 # Select out only full days so we have something the covariances can
 # deal with.

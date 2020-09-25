@@ -281,6 +281,8 @@ INFLUENCE_DATASET = xarray.open_mfdataset(
                 time_before_observation=FLUX_CHUNKS,
                 dim_y=NY, dim_x=NX),
     engine=NC_ENGINE,
+    concat_dim="site",
+    combine="nested",
 ).isel(
     observation_time=slice(DAYS_DROPPED_FROM_END * HOURS_PER_DAY,
                            (OBS_DAYS + DAYS_DROPPED_FROM_END) * HOURS_PER_DAY),
@@ -527,7 +529,8 @@ write_progress_message("Loaded data")
 # 11 min next run
 # This includes the realignment time deferred with dask above
 sparse_influences = sparse.COO(aligned_influences.values)
-aligned_influences.data = da.asarray(sparse_influences)
+# aligned_influences.data = da.asarray(sparse_influences)
+aligned_influences = aligned_influences.copy(data=sparse_influences)
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Converted to COO")
 flush_output_streams()
