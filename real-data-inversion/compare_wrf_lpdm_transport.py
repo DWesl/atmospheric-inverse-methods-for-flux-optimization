@@ -724,10 +724,10 @@ def compare_wrf_lpdm_mole_fractions_for_month(
     year, month: int
     """
     wrf_mole_fractions = wrf_mole_fractions.rename(Time="observation_time")
-    wrf_obs_times = wrf_mole_fractions.coords["observation_time"]
-    lpdm_obs_times = lpdm_mole_fractions.coords["observation_time"]
-    latest_start = max(min(wrf_obs_times), min(lpdm_obs_times)).astype("M8[ns]")
-    earliest_finish = min(max(wrf_obs_times), max(lpdm_obs_times)).astype("M8[ns]")
+    wrf_obs_times = wrf_mole_fractions.indexes["observation_time"]
+    lpdm_obs_times = lpdm_mole_fractions.indexes["observation_time"]
+    latest_start = max(min(wrf_obs_times), min(lpdm_obs_times))  # .astype("M8[ns]")
+    earliest_finish = min(max(wrf_obs_times), max(lpdm_obs_times))  # .astype("M8[ns]")
     _LOGGER.debug("Obs time range: %s \N{EN DASH} %s", latest_start, earliest_finish)
     obs_time_index = np.array(
         pd.date_range(
@@ -839,6 +839,7 @@ def save_nonsparse_netcdf(ds_to_save, save_name):
     for name in ds_to_save.coords:
         if "projection" in ds_to_save.coords[name].attrs:
             del ds_to_save.coords[name].attrs["projection"]
+    _LOGGER.debug("Saving file %s from dataset:\n%s", save_name, ds_to_save)
     ds_to_save.to_netcdf(
         save_name, mode="w", format="NETCDF4", encoding=encoding, engine="h5netcdf"
     )
