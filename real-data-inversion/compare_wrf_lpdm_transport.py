@@ -30,7 +30,6 @@ import cf_acdd
 
 TYPING = False
 if TYPING:
-    import matplotlib as mpl
     from typing import Dict, Any, Hashable, Tuple
 
 logging.basicConfig(
@@ -716,7 +715,7 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
 def compare_wrf_lpdm_mole_fractions_for_month(
     wrf_mole_fractions, lpdm_mole_fractions, year, month
 ):
-    # type: (xarray.Dataset, xarray.Dataset, int, int) -> mpl.figure.Figure
+    # type: (xarray.Dataset, xarray.Dataset, int, int) -> None
     """Plot the WRF and LPDM mole fractions at the LPDM towers.
 
     Parameters
@@ -749,7 +748,7 @@ def compare_wrf_lpdm_mole_fractions_for_month(
     )
 
     for tracer_name in combined_mole_fractions.data_vars:
-        tracer_num = int(tracer_name.split("_")[1])
+        tracer_num = int(str(tracer_name).split("_")[1])
         if tracer_num == 1:
             wrf_background = 400
         elif tracer_num in range(2, 12 + 1):
@@ -954,7 +953,7 @@ if __name__ == "__main__":
         ),
     )
     _LOGGER.info("Saved LPDM mole fractions")
-    fig = compare_wrf_lpdm_mole_fractions_for_month(
+    compare_wrf_lpdm_mole_fractions_for_month(
         wrf_mole_fractions, lpdm_mole_fractions, args.year, args.month
     )
     _LOGGER.info("Plotted WRF and LPDM mole fractions")
