@@ -523,18 +523,23 @@ aligned_prior_fluxes = aligned_prior_fluxes.transpose(
 aligned_influences = aligned_influences.transpose(
     "observation", "flux_time", "dim_y", "dim_x")
 write_progress_message("Rechunked to square")
-aligned_influences = aligned_influences.fillna(0)
-aligned_true_fluxes.astype(np.float32).load()
-aligned_prior_fluxes.astype(np.float32).load()
-aligned_influences.astype(np.float32).load()
-write_progress_message("Loaded data")
 
 # 23 min for seven towers over a month
 # 11 min next run
 # This includes the realignment time deferred with dask above
+write_progress_message("Filling na in aligned influences")
+aligned_influences = aligned_influences.fillna(0)
+write_progress_message("Loading aligned influences")
+aligned_influences.astype(np.float32).load()
+write_progress_message("Making aligned influences sparse")
 sparse_influences = sparse.COO(aligned_influences.values)
 # aligned_influences.data = da.asarray(sparse_influences)
 aligned_influences = aligned_influences.copy(data=sparse_influences)
+write_progress_message("Aligned influences now sparse")
+
+aligned_true_fluxes.astype(np.float32).load()
+aligned_prior_fluxes.astype(np.float32).load()
+write_progress_message("Loaded data")
 
 print(datetime.datetime.now(UTC).strftime("%c"), "Converted to COO")
 flush_output_streams()
