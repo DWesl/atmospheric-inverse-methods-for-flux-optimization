@@ -300,9 +300,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         site=sorted(influence_dataset.indexes["site"]),
     )
     _LOGGER.debug("Rechunking for one chunk on sites")
-    influence_dataset = influence_dataset.chunk(
-        {"observation_time": 1, "site": 31}
-    )
+    influence_dataset = influence_dataset.chunk({"observation_time": 1, "site": 31})
     _LOGGER.debug("Influence dataset:\n%s", influence_dataset)
     _LOGGER.debug("Aligning influence functions on flux time")
     obs_time_index = influence_dataset.indexes["observation_time"]
@@ -336,8 +334,7 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
             ],
             dim="observation_time",
             fill_value=np.array(0, dtype=influence_dataset["H"].dtype),
-        )
-        .to_dataset()
+        ).to_dataset()
         # .reindex(flux_time=flux_time_index)
     )
     aligned_influence.coords["flux_time"] = aligned_influence.coords[
