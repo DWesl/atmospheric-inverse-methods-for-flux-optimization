@@ -382,11 +382,11 @@ def get_lpdm_footprint(lpdm_footprint_dir, year, month):
         {"flux_time": 8 * 2, "observation_time": 24, "site": 6}
     )
     _LOGGER.debug("Adding bounds and coords to influence functions")
-    aligned_influence.coords["flux_time"] = (
-        ("flux_time",),
-        flux_time_index,
-        {"standard_name": "time", "bounds": "flux_time_bounds"},
-    )
+    # aligned_influence.coords["flux_time"] = (
+    #     ("flux_time",),
+    #     flux_time_index,
+    #     {"standard_name": "time", "bounds": "flux_time_bounds"},
+    # )
     aligned_influence.coords["flux_time_bounds"] = (
         ("flux_time", "bnds2"),
         flux_time_bounds["flux_time_bnds"],
