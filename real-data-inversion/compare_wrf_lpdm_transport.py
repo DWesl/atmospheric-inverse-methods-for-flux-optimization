@@ -684,15 +684,17 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
         #     .dot(here_fluxes.sel(flux_time=flux_index))
         # )
         result["tracer_{i:d}".format(i=i + 1)] = (
-            ("observation_time", "site"),
-            da.tensordot(
-                here_footprint.data,
-                here_fluxes.data,
-                axes=3,
-            ),
-            # # I really don't understand why this crashes
-            # # TODO: fix crashes in code below
-            # result["tracer_{i:d}".format(i=i + 1)].attrs.update(
+            here_footprint.dot(here_fluxes)
+            # ("observation_time", "site"),
+            # da.tensordot(
+            #     here_footprint.data,
+            #     here_fluxes.data,
+            #     axes=3,
+            # ),
+        )
+        # I really don't understand why this crashes
+        # TODO: fix crashes in code below
+        result["tracer_{i:d}".format(i=i + 1)].attrs.update(
             {
                 "standard_name": "carbon_dioxide_mole_fraction",
                 "long_name": (
