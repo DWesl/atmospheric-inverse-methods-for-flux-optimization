@@ -47,8 +47,9 @@ if TYPING:
     from typing import List, Tuple
 
 # Program setup
-dask_conf.set(num_workers=8, scheduler="threads")
+dask_conf.set(num_workers=4, scheduler="threads")
 xarray.set_options(display_width=100, keep_attrs=True)
+atmos_flux_inversion.correlations.ADVANCE_PLANNER_EFFORT = "FFTW_EXHAUSTIVE"
 
 # Program constants
 
@@ -742,6 +743,7 @@ flush_output_streams()
 #     "spatial_obs_op_remapper_ds",
 # )
 
+write_progress_message("Creating reduced influence functions")
 reduced_influences = (
     aligned_influences
     .groupby_bins(
@@ -774,6 +776,9 @@ reduced_influences = (
     .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).sum("flux_time")
 ).rename(dim_x_bins="reduced_dim_x", dim_y_bins="reduced_dim_y",
          flux_time="reduced_flux_time")
+write_progress_message("Loading reduced influence functions")
+reduced_influences = reduced_influences.load()
+write_progress_message("Reduced influence functions loaded")
 # sparse_reduced_influences_coords = sparse_influences.coords.copy()
 # # dim 0 is obs
 # # dim 1 is flux_time
