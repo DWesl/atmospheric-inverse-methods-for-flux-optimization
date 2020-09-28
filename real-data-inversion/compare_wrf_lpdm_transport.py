@@ -523,10 +523,14 @@ def get_wrf_fluxes(wrf_output_dir, year, month):
     -------
     fluxes: xarray.Dataset
     """
+    if month != 12:
+        end_time = datetime.datetime(year, month + 1, 1, 0, 0, 0)
+    else:
+        end_time = datetime.datetime(year + 1, 1, 1, 0, 0, 0)
     flux_time_index = pd.date_range(
         start=datetime.datetime(year, month, 1, 0, 0, 0)
         - datetime.timedelta(hours=FLUX_WINDOW),
-        end=datetime.datetime(year, month + 1, 1, 0, 0, 0),
+        end=end_time,
         freq="{0:d}H".format(FLUX_INTERVAL),
     )
     wrf_output_files = [
@@ -588,10 +592,14 @@ def get_wrf_mole_fractions(wrf_output_dir, year, month, tower_locs):
     -------
     mole_fraction_time_series: xarray.Dataset
     """
+    if month != 12:
+        end_time = datetime.datetime(year, month + 1, 1, 0, 0)
+    else:
+        end_time = datetime.datetime(year + 1, 1, 1, 0, 0, 0)
     observation_time_index = pd.date_range(
         start=datetime.datetime(year, month, 1, 0, 0, 0),
         # This will produce one more WRF obs time than LPDM has
-        end=datetime.datetime(year, month + 1, 1, 0, 0),
+        end=end_time,
         # The one place where OBS_WINDOW/OBSERVATION_WINDOW is
         # relevant in this script
         freq="1H",
@@ -787,11 +795,15 @@ def compare_wrf_lpdm_mole_fractions_for_month(
                 .values,
             )[0]
             ax.set_title(site.decode("utf8"))
+            if month != 0:
+                end_time = datetime.datetime(year, month + 1, 1, 0, 0)
+            else:
+                end_time = datetime.datetime(year + 1, 1, 1, 0, 0, 0)
             ax.set_xticks(
                 mdates.date2num(
                     pd.date_range(
                         datetime.datetime(year, month, 1),
-                        datetime.datetime(year, month + 1, 1),
+                        end_time,
                         freq="7D",
                     ).values
                 )
