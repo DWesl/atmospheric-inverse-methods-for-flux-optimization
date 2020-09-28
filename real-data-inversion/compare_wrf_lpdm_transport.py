@@ -745,7 +745,6 @@ def compare_wrf_lpdm_mole_fractions_for_month(
         ],
         dim=pd.Index(["WRF", "LPDM"], name="model"),
     )
-
     for tracer_name in combined_mole_fractions.data_vars:
         tracer_num = int(str(tracer_name).split("_")[1])
         if tracer_num == 1:
