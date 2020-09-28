@@ -771,7 +771,7 @@ reduced_influences = (
 sparse_reduced_influences_coords = sparse_influences.coords.copy()
 # dim 0 is obs
 # dim 1 is flux_time
-assert UNCERTAINTY_TEMPORAL_RESOLUTION == "1W"
+assert UNCERTAINTY_TEMPORAL_RESOLUTION == "7D"
 sparse_reduced_influences_coords[1, :] //= 7 * INTERVALS_PER_DAY
 # dims 2 and 3 are y and x
 sparse_reduced_influences_coords[2:, :] //= UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR
