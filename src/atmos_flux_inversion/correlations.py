@@ -145,7 +145,9 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
         if is_cyclic:
             self._ifft = functools.partial(
                 irfftn, axes=arange(0, ndims, dtype=int), s=shape,
-                threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
+                threads=NUM_THREADS,
+                planner_effort=PLANNER_EFFORT,
+            )
         else:
             axes = arange(0, ndims, dtype=int)
             base_slices = tuple(slice(None, dim) for dim in shape)
@@ -169,7 +171,9 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
                 )
                 big_result = irfftn(
                     arry, axes=axes, s=computational_shape,
-                    threads=NUM_THREADS, planner_effort=PLANNER_EFFORT)
+                    threads=NUM_THREADS,
+                    planner_effort=PLANNER_EFFORT,
+                )
                 return big_result[slicer]
 
             self._ifft = _ifft
@@ -246,13 +250,16 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
         # This also ensures the format here is the same as in _matmat
         corr_fourier = rfftn(
             corr_struct, axes=arange(ndims, dtype=int),
-            threads=NUM_THREADS, planner_effort=ADVANCE_PLANNER_EFFORT)
+            threads=NUM_THREADS,
+            planner_effort=ADVANCE_PLANNER_EFFORT,
+        )
         self._corr_fourier = (corr_fourier)
 
         # This is also affected by roundoff
         abs_corr_fourier = abs(corr_fourier)
         self._fourier_near_zero = (
-            abs_corr_fourier < FOURIER_NEAR_ZERO * abs_corr_fourier.max())
+            abs_corr_fourier < FOURIER_NEAR_ZERO * abs_corr_fourier.max()
+        )
         return self
 
     @classmethod
@@ -292,7 +299,9 @@ class HomogeneousIsotropicCorrelation(SelfAdjointLinearOperator):
             # nice planning done for the later evaluations.
             corr_fourier = rfftn(
                 corr_array, axes=arange(0, ndims, dtype=int),
-                threads=NUM_THREADS, planner_effort=ADVANCE_PLANNER_EFFORT)
+                threads=NUM_THREADS,
+                planner_effort=ADVANCE_PLANNER_EFFORT,
+            )
 
         # The fft axes need to be a single chunk for the dask ffts
         # It's in memory already anyway
