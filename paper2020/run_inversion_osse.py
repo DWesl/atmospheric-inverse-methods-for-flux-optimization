@@ -14,6 +14,7 @@ import glob
 import sys
 
 import dask.array as da
+import dask.config as dask_conf
 import pandas as pd
 import dateutil.tz
 import numpy as np
@@ -44,6 +45,12 @@ import cf_acdd
 TYPING = False
 if TYPING:
     from typing import List, Tuple
+
+# Program setup
+dask_conf.set(num_workers=8, scheduler="threads")
+xarray.set_options(display_width=100, keep_attrs=True)
+
+# Program constants
 
 INFLUENCE_PATHS = [
     "/nobackup/dwesloh/inversion/data_dir/LPDM Influence functions January 2010/"
