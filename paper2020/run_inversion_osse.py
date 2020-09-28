@@ -20,7 +20,7 @@ import dateutil.tz
 import numpy as np
 import cf_units
 import netCDF4
-import sparse
+# import sparse
 import xarray
 import wrf
 
@@ -538,18 +538,17 @@ write_progress_message("Filling na in aligned influences")
 aligned_influences = aligned_influences.fillna(0)
 write_progress_message("Loading aligned influences")
 aligned_influences.astype(np.float32).load()
-write_progress_message("Making aligned influences sparse")
-sparse_influences = sparse.COO(aligned_influences.values)
-# aligned_influences.data = da.asarray(sparse_influences)
-aligned_influences = aligned_influences.copy(data=sparse_influences)
-write_progress_message("Aligned influences now sparse")
+# write_progress_message("Making aligned influences sparse")
+# sparse_influences = sparse.COO(aligned_influences.values)
+# print(datetime.datetime.now(UTC).strftime("%c"), "Converted to COO")
+# flush_output_streams()
+# # aligned_influences.data = da.asarray(sparse_influences)
+# aligned_influences = aligned_influences.copy(data=sparse_influences)
+# write_progress_message("Aligned influences now sparse")
 
 aligned_true_fluxes.astype(np.float32).load()
 aligned_prior_fluxes.astype(np.float32).load()
 write_progress_message("Loaded data")
-
-print(datetime.datetime.now(UTC).strftime("%c"), "Converted to COO")
-flush_output_streams()
 
 posterior_var_atts = aligned_prior_fluxes.attrs.copy()
 posterior_var_atts.update(dict(
@@ -775,18 +774,18 @@ reduced_influences = (
     .resample(flux_time=UNCERTAINTY_TEMPORAL_RESOLUTION).sum("flux_time")
 ).rename(dim_x_bins="reduced_dim_x", dim_y_bins="reduced_dim_y",
          flux_time="reduced_flux_time")
-sparse_reduced_influences_coords = sparse_influences.coords.copy()
-# dim 0 is obs
-# dim 1 is flux_time
-assert UNCERTAINTY_TEMPORAL_RESOLUTION == "7D"
-sparse_reduced_influences_coords[1, :] //= 7 * INTERVALS_PER_DAY
-# dims 2 and 3 are y and x
-sparse_reduced_influences_coords[2:, :] //= UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR
-reduced_influences_sparse = sparse.COO(
-    sparse_reduced_influences_coords,
-    sparse_influences.data.astype(np.float32)
-)
-del sparse_reduced_influences_coords
+# sparse_reduced_influences_coords = sparse_influences.coords.copy()
+# # dim 0 is obs
+# # dim 1 is flux_time
+# assert UNCERTAINTY_TEMPORAL_RESOLUTION == "7D"
+# sparse_reduced_influences_coords[1, :] //= 7 * INTERVALS_PER_DAY
+# # dims 2 and 3 are y and x
+# sparse_reduced_influences_coords[2:, :] //= UNCERTAINTY_RESOLUTION_REDUCTION_FACTOR
+# reduced_influences_sparse = sparse.COO(
+#     sparse_reduced_influences_coords,
+#     sparse_influences.data.astype(np.float32)
+# )
+# del sparse_reduced_influences_coords
 
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Have reduced influence for covariance calculation.")
@@ -871,10 +870,10 @@ write_progress_message("Have observation noise")
 print(datetime.datetime.now(UTC).strftime("%c"),
       "Got covariance parts, getting posterior")
 flush_output_streams()
-assert sparse_influences.shape == (
-    aligned_influences.shape[0], N_FLUX_TIMES, NY, NX
-)
-assert reduced_influences_sparse.shape == reduced_influences.shape
+# assert sparse_influences.shape == (
+#     aligned_influences.shape[0], N_FLUX_TIMES, NY, NX
+# )
+# assert reduced_influences_sparse.shape == reduced_influences.shape
 posterior, reduced_posterior_covariances = (
     atmos_flux_inversion.optimal_interpolation.save_sum(
         aligned_prior_fluxes.values.reshape(
@@ -883,11 +882,23 @@ posterior, reduced_posterior_covariances = (
         prior_covariance,
         used_observations.values.astype(np.float32),
         observation_covariance.astype(np.float32),
-        sparse_influences.reshape((aligned_influences.shape[0],
-                                   np.prod(aligned_influences.shape[-3:]))).astype(np.float32),
+        aligned_influences.values.reshape(
+            (
+                aligned_influences.shape[0],
+                np.prod(aligned_influences.shape[-3:])
+            )
+        ).astype(np.float32),
+        # sparse_influences.reshape((aligned_influences.shape[0],
+        #                            np.prod(aligned_influences.shape[-3:]))).astype(np.float32),
         reduced_prior_covariance,
-        reduced_influences_sparse.reshape((reduced_influences.shape[0],
-                                           np.prod(reduced_influences.shape[-3:]))).astype(np.float32)
+        reduced_influences.reshape(
+            (
+                reduced_influences.shape[0],
+                np.prod(reduced_influences.shape[-3:])
+            )
+        ).astype(np.float32)
+        # reduced_influences_sparse.reshape((reduced_influences.shape[0],
+        #                                    np.prod(reduced_influences.shape[-3:]))).astype(np.float32)
     )
 )
 print(datetime.datetime.now(UTC).strftime("%c"),
