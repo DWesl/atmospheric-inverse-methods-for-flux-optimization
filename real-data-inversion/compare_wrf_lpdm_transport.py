@@ -652,12 +652,12 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
     fluxes_matched = wrf_fluxes.rename(
         Time="flux_time", west_east="dim_x", south_north="dim_y"
     ).sum("emissions_zdim")
-    flux_index = lpdm_footprint.coords["flux_time"]
-    if len(flux_index) % 8 != 0 and fluxes_matched.dims["flux_time"] % 8 == 0:
-        # More relevant if I have a covariance, but whatever.
-        flux_index = fluxes_matched.coords["flux_time"]
-    _LOGGER.debug("Flux time index for convolution:\n%s", flux_index)
-    here_footprint = lpdm_footprint["H"].sel(flux_time=flux_index)
+    # flux_index = lpdm_footprint.coords["flux_time"]
+    # if len(flux_index) % 8 != 0 and fluxes_matched.dims["flux_time"] % 8 == 0:
+    #     # More relevant if I have a covariance, but whatever.
+    #     flux_index = fluxes_matched.coords["flux_time"]
+    # _LOGGER.debug("Flux time index for convolution:\n%s", flux_index)
+    here_footprint = lpdm_footprint["H"]  # .sel(flux_time=flux_index)
     _LOGGER.debug("Influence function to convolve:\n%s", here_footprint)
     # result = (
     #     lpdm_footprint["H"]
@@ -674,15 +674,10 @@ def lpdm_footprint_convolve(lpdm_footprint, wrf_fluxes):
     result.coords["time_written"] = NOW.time().isoformat()
     result.attrs.update(cf_acdd.global_attributes_dict())
     for i in range(len(wrf_fluxes.data_vars)):
-        here_fluxes = fluxes_matched["E_TRA{i:d}".format(i=i + 1)].sel(
-            flux_time=flux_index
-        )
-        _LOGGER.debug("Fluxes to convolve:\n%s", here_fluxes)
-        # result["tracer_{i:d}".format(i=i + 1)] = (
-        #     lpdm_footprint["H"]
-        #     .sel(flux_time=flux_index)
-        #     .dot(here_fluxes.sel(flux_time=flux_index))
+        here_fluxes = fluxes_matched["E_TRA{i:d}".format(i=i + 1)]  # .sel(
+        #     flux_time=flux_index
         # )
+        _LOGGER.debug("Fluxes to convolve:\n%s", here_fluxes)
         result["tracer_{i:d}".format(i=i + 1)] = (
             here_footprint.dot(here_fluxes)
             # ("observation_time", "site"),
