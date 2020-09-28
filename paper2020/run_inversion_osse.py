@@ -891,7 +891,7 @@ posterior, reduced_posterior_covariances = (
         # sparse_influences.reshape((aligned_influences.shape[0],
         #                            np.prod(aligned_influences.shape[-3:]))).astype(np.float32),
         reduced_prior_covariance,
-        reduced_influences.reshape(
+        reduced_influences.values.reshape(
             (
                 reduced_influences.shape[0],
                 np.prod(reduced_influences.shape[-3:])
